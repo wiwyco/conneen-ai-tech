@@ -43,7 +43,7 @@ body {
 
   .page.site-mode #binary-canvas,
   .page.returning-to-chat #binary-canvas {
-    opacity: 0.22;
+    opacity: 1;
   }
 
   .chat-shell {
@@ -245,7 +245,7 @@ body {
 
   .logo-transition {
     position: fixed;
-    z-index: 6;
+    z-index: 10;
     top: 50%;
     left: 50%;
     width: min(560px, calc(100vw - 48px));
@@ -266,9 +266,9 @@ body {
   }
 
   .logo-transition.fly-home {
-    top: 30px;
-    left: 30px;
-    width: 252px;
+    top: 22px;
+    left: clamp(20px, 4vw, 56px);
+    width: min(260px, 48vw);
     transform: translate(0, 0) scale(1);
   }
 
@@ -299,6 +299,12 @@ body {
     display: block;
     width: min(260px, 48vw);
     flex: 0 0 auto;
+    transition: opacity 700ms ease;
+  }
+
+  .page.site-mode .site-brand {
+    opacity: 0;
+    pointer-events: none;
   }
 
 

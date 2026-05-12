@@ -32,6 +32,7 @@ const page = document.getElementById("page");
     completed: false,
     mode: "intro",
     siteStartedAt: 0,
+    siteTransitionFinished: false,
     borderRevealStartedAt: 0,
     borderRevealDuration: 2400,
     chatOffsetX: 8,
@@ -184,6 +185,10 @@ const page = document.getElementById("page");
       alpha: 0.9,
       persistent: true,
       clickable: true,
+
+      // This makes the button appear cell-by-cell as the first wave reaches it,
+      // instead of popping in after the chat reveal finishes.
+      revealOnSettle: true,
     };
   }
 
@@ -206,64 +211,97 @@ const page = document.getElementById("page");
     hideGoSiteHotspot();
     state.mode = "siteTransition";
     state.siteStartedAt = performance.now();
+    state.siteTransitionFinished = false;
     state.siteWaves = [];
     state.erased.fill(0);
 
     page.classList.add("site-transitioning");
     chatShell.classList.add("site-exit");
     chatShell.classList.remove("visible");
+    siteShell.classList.remove("visible", "fading-out");
+
+    logoTransition.classList.remove("visible", "fly-home");
 
     addSiteWave(x, y);
 
-    setTimeout(() => {
-      logoTransition.classList.add("visible");
-    }, reducedMotion ? 0 : 620);
+    if (reducedMotion) {
+      state.erased.fill(1);
+      finishSiteTransition();
+    }
+  }
+
+  function finishSiteTransition() {
+    if (state.siteTransitionFinished) return;
+
+    state.siteTransitionFinished = true;
+    state.mode = "siteLogo";
+    state.erased.fill(1);
+
+    // The logo only appears after the site-clearing wave has crossed the full screen.
+    logoTransition.classList.add("visible");
+    logoTransition.classList.remove("fly-home");
 
     setTimeout(() => {
       logoTransition.classList.add("fly-home");
-    }, reducedMotion ? 80 : 1700);
+    }, reducedMotion ? 80 : 900);
 
     setTimeout(() => {
       state.mode = "site";
-      state.erased.fill(1);
       page.classList.add("site-mode");
       page.classList.remove("site-transitioning", "returning-to-chat");
+
       siteShell.classList.add("visible");
       siteShell.classList.remove("fading-out");
-      logoTransition.classList.remove("visible", "fly-home");
-    }, reducedMotion ? 220 : 2850);
+
+      // Keep the transition logo pinned at the top-left instead of hiding it.
+      logoTransition.classList.add("visible", "fly-home");
+    }, reducedMotion ? 180 : 2050);
   }
 
   function returnToChat() {
     if (state.mode !== "site") return;
 
-    state.mode = "chat";
+    state.mode = "returning";
     state.completed = true;
     state.bits.fill(1);
     state.settled.fill(1);
     state.erased.fill(0);
     state.borderRevealStartedAt = performance.now();
 
+    hideGoSiteHotspot();
+
     page.classList.add("returning-to-chat");
     page.classList.remove("site-mode");
+
     siteShell.classList.add("fading-out");
     siteShell.classList.remove("visible");
 
+    // Start from the top-left logo position.
     logoTransition.classList.add("visible", "fly-home");
 
-    setTimeout(() => {
+    // Then remove fly-home so the existing CSS transition moves it back to center.
+    requestAnimationFrame(() => {
       logoTransition.classList.remove("fly-home");
-    }, reducedMotion ? 0 : 150);
+    });
 
+    // After it reaches center, fade it.
     setTimeout(() => {
       logoTransition.classList.remove("visible");
+    }, reducedMotion ? 120 : 1050);
+
+    // Then restore the chatbot page.
+    setTimeout(() => {
+      state.mode = "chat";
+
       chatShell.classList.remove("site-exit");
       chatShell.classList.add("visible");
+
       page.classList.remove("returning-to-chat");
       siteShell.classList.remove("fading-out");
+
       showGoSiteHotspot();
       chatInput.focus();
-    }, reducedMotion ? 180 : 1200);
+    }, reducedMotion ? 220 : 1550);
   }
 
   function updateWaves() {
@@ -349,6 +387,8 @@ const page = document.getElementById("page");
       addSiteWave(source.x, source.y);
     }
 
+    let erasedCount = 0;
+
     for (let row = 0; row < state.rows; row++) {
       const y = row * state.cellH + state.cellH * 0.5;
 
@@ -356,41 +396,49 @@ const page = document.getElementById("page");
         const x = col * state.cellW + state.cellW * 0.5;
         const idx = row * state.cols + col;
 
-        if (state.erased[idx]) continue;
+        if (!state.erased[idx]) {
+          for (const wave of state.siteWaves) {
+            const dist = Math.hypot(x - wave.x, y - wave.y);
+            const phase = wave.radius - dist;
 
-        for (const wave of state.siteWaves) {
-          const dist = Math.hypot(x - wave.x, y - wave.y);
-          const phase = wave.radius - dist;
+            if (phase < 0) continue;
 
-          if (phase < 0) continue;
+            let shouldErase = false;
 
-          let shouldErase = false;
+            for (let ring = 0; ring < wave.rings; ring++) {
+              const ringPhase = phase - ring * wave.spacing;
+              const crestWidth =
+                wave.crestWidths[ring] || wave.crestWidths[wave.crestWidths.length - 1];
 
-          for (let ring = 0; ring < wave.rings; ring++) {
-            const ringPhase = phase - ring * wave.spacing;
-            const crestWidth = wave.crestWidths[ring] || wave.crestWidths[wave.crestWidths.length - 1];
+              if (ringPhase < -crestWidth || ringPhase > crestWidth) continue;
 
-            if (ringPhase < -crestWidth || ringPhase > crestWidth) continue;
+              const ridgePressure = 1 - Math.abs(ringPhase) / crestWidth;
+              const ringBias = 0.24 + ring * 0.1;
 
-            const ridgePressure = 1 - Math.abs(ringPhase) / crestWidth;
-            const ringBias = 0.24 + ring * 0.1;
+              if (ridgePressure + ringBias > state.eraseNoise[idx]) {
+                shouldErase = true;
+                break;
+              }
+            }
 
-            if (ridgePressure + ringBias > state.eraseNoise[idx]) {
+            if (!shouldErase && phase > wave.wakeFill) {
               shouldErase = true;
+            }
+
+            if (shouldErase) {
+              state.erased[idx] = 1;
               break;
             }
           }
-
-          if (!shouldErase && phase > wave.wakeFill) {
-            shouldErase = true;
-          }
-
-          if (shouldErase) {
-            state.erased[idx] = 1;
-            break;
-          }
         }
+
+        erasedCount += state.erased[idx];
       }
+    }
+
+    // Do not start the logo sequence until the clearing wave has crossed every cell.
+    if (erasedCount === state.erased.length) {
+      finishSiteTransition();
     }
   }
 
@@ -491,7 +539,7 @@ const page = document.getElementById("page");
       },
     ];
 
-    if (state.completed && state.mode === "chat") {
+    if ((state.started || state.completed) && state.mode !== "siteTransition" && state.mode !== "site") {
       zones.push(getGoSiteZone());
     }
 
@@ -532,6 +580,12 @@ const page = document.getElementById("page");
         row <= boxBottom;
 
       if (!inBox) continue;
+
+      // For zones like GO TO SITE, keep drawing normal binary until the wave
+      // physically reaches each cell. Once settled, the text/blank padding appears.
+      if (zone.revealOnSettle && !state.settled[idx]) {
+        continue;
+      }
 
       const textRow = row - zone.startRow;
       const textCol = col - zone.startCol;
@@ -580,12 +634,18 @@ const page = document.getElementById("page");
         const cellX = col * state.cellW + state.cellW / 2;
         const cellY = y;
         const ripple = getRippleEffect(cellX, cellY);
-        const isSiteVisual = state.mode === "site" || state.mode === "siteTransition";
+        const isSiteTransition = state.mode === "siteTransition";
+        const isSiteMode =
+          state.mode === "site" ||
+          state.mode === "siteLogo" ||
+          state.mode === "returning";
 
-        if (isSiteVisual && state.erased[idx]) continue;
+        const isSiteVisual = isSiteTransition || isSiteMode;
+
+        if (isSiteTransition && state.erased[idx]) continue;
 
         const waveOffset = reducedMotion ? 0 : Math.sin(t * 1.7 + col * 0.45 + row * 0.22) * 1;
-        const baseAlpha = isSiteVisual ? 0.24 : bit ? 0.86 : 0.46;
+        const baseAlpha = isSiteMode ? 0.105 : isSiteTransition ? 0.24 : bit ? 0.86 : 0.46;
         const alpha = Math.min(1, baseAlpha + ripple.glow * 0.18);
 
         const embeddedCell = getEmbeddedCell(col, row, idx);
@@ -664,8 +724,11 @@ const page = document.getElementById("page");
         }
 
         if (isSiteVisual) {
-          ctx.fillStyle = `rgba(17, 17, 17, ${alpha})`;
-          drawGlyph("1", cellX + waveOffset, cellY + ripple.yOffset, ripple.scale);
+          const backgroundBit = state.settleNoise[idx] > 0.5 ? "1" : "0";
+          const siteAlpha = isSiteMode ? 0.105 : alpha;
+
+          ctx.fillStyle = `rgba(17, 17, 17, ${siteAlpha})`;
+          drawGlyph(backgroundBit, cellX + waveOffset, cellY + ripple.yOffset, ripple.scale);
           continue;
         }
 
