@@ -218,7 +218,7 @@
   <canvas id="binary-canvas" aria-hidden="true"></canvas>
   <div class="brand">Conneen AI</div>
   <div class="hint">
-    Move through the field. The noise resolves into signal, then into an initial AI consultation.
+    Click or tap the field. The noise resolves into signal, then into an initial AI consultation.
   </div>
 
   <section class="chat-shell" id="chat-shell" aria-label="Conneen AI consultation chat">
@@ -272,7 +272,6 @@
     waves: [],
     started: false,
     completed: false,
-    lastMoveAt: 0,
   };
 
   function resize() {
@@ -328,9 +327,6 @@
   }
 
   function handlePointer(event) {
-    const now = performance.now();
-    if (event.type === "mousemove" && now - state.lastMoveAt < 80) return;
-    state.lastMoveAt = now;
     const p = pointerPosition(event);
     addWave(p.x, p.y);
   }
@@ -500,10 +496,8 @@
   });
 
   window.addEventListener("resize", resize);
-  window.addEventListener("mousemove", handlePointer, { passive: true });
   window.addEventListener("click", handlePointer, { passive: true });
   window.addEventListener("touchstart", handlePointer, { passive: true });
-  window.addEventListener("touchmove", handlePointer, { passive: true });
 
   resize();
 
