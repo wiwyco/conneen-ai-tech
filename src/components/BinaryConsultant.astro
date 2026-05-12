@@ -37,27 +37,13 @@
   }
 
   .brand {
-    position: fixed;
-    top: 24px;
-    left: 24px;
-    z-index: 3;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    color: rgba(216, 255, 226, 0.9);
-    font-size: 14px;
-    pointer-events: none;
+    top: 14px;
+    left: 14px;
+    font-size: 12px;
   }
 
   .hint {
-    position: fixed;
-    right: 24px;
-    bottom: 22px;
-    z-index: 3;
-    max-width: 360px;
-    color: rgba(216, 255, 226, 0.68);
-    font-size: 13px;
-    line-height: 1.45;
-    pointer-events: none;
+    display: none;
   }
 
   .chat-shell {
@@ -203,16 +189,6 @@
   }
 
   @media (max-width: 620px) {
-    .brand {
-      top: 14px;
-      left: 14px;
-      font-size: 12px;
-    }
-
-    .hint {
-      display: none;
-    }
-
     .chat-form {
       grid-template-columns: 1fr;
     }
@@ -225,10 +201,6 @@
 
 <main class="page">
   <canvas id="binary-canvas" aria-hidden="true"></canvas>
-  <div class="brand">Conneen AI</div>
-  <div class="hint">
-    Click or tap the field. The noise resolves into signal, then into an initial AI consultation.
-  </div>
 
   <section class="chat-shell" id="chat-shell" aria-label="Conneen AI consultation chat">
     <div class="chat-panel">
@@ -403,6 +375,49 @@
       : 1 - Math.pow(-2 * t + 2, 3) / 2;
   }
 
+  function drawGridText(text, x, y, options = {}) {
+    const {
+      align = "left",
+      maxWidth = state.width - 48,
+      lineHeight = 18,
+      alpha = 0.82,
+      fontSize = 13,
+      letterSpacing = 0,
+    } = options;
+
+    ctx.save();
+    ctx.font = `${fontSize}px ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace`;
+    ctx.textAlign = align;
+    ctx.textBaseline = "top";
+    ctx.fillStyle = `rgba(216, 255, 226, ${alpha})`;
+
+    const words = text.split(" ");
+    const lines = [];
+    let line = "";
+
+    for (const word of words) {
+      const testLine = line ? `${line} ${word}` : word;
+      if (ctx.measureText(testLine).width > maxWidth && line) {
+        lines.push(line);
+        line = word;
+      } else {
+        line = testLine;
+      }
+    }
+
+    if (line) lines.push(line);
+
+    for (let i = 0; i < lines.length; i++) {
+      const lineText = letterSpacing
+        ? lines[i].split("").join(" ".repeat(letterSpacing))
+        : lines[i];
+
+      ctx.fillText(lineText, x, y + i * lineHeight);
+    }
+
+    ctx.restore();
+  }
+
   function draw() {
     updateWaves();
 
@@ -490,6 +505,30 @@
           : `rgba(216, 255, 226, ${alpha * 0.7})`;
 
         ctx.fillText(String(bit), col * state.cellW + state.cellW / 2 + waveOffset, y);
+      }
+    }
+
+    if (!state.completed) {
+      const textWave = reducedMotion ? 0 : Math.sin(performance.now() / 900) * 0.8;
+
+      drawGridText("CONNEEN AI", 24 + textWave, 22, {
+        fontSize: 14,
+        alpha: 0.9,
+        letterSpacing: 1,
+      });
+
+      if (state.width > 620) {
+        drawGridText(
+          "Click or tap the field. The noise resolves into signal, then into an initial AI consultation.",
+          state.width - 380 + textWave,
+          state.height - 48,
+          {
+            maxWidth: 356,
+            lineHeight: 18,
+            fontSize: 13,
+            alpha: 0.68,
+          }
+        );
       }
     }
 
