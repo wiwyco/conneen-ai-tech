@@ -64,8 +64,8 @@
     position: fixed;
     inset: 50%;
     z-index: 4;
-    width: min(920px, calc(100vw - 28px));
-    height: min(680px, calc(100vh - 28px));
+    width: min(880px, calc(100vw - 56px));
+    height: min(640px, calc(100vh - 56px));
     transform: translate(-50%, -50%) scale(0.97);
     opacity: 0;
     pointer-events: none;
@@ -415,8 +415,8 @@
         // The chat reveal needs a blank center with 0s as border and 1s outside.
         // After the wave finishes, the 0 border grows outward from the center instead of snapping in.
         if (state.completed) {
-          const panelW = Math.min(920, state.width - 28);
-          const panelH = Math.min(680, state.height - 28);
+          const panelW = Math.min(880, state.width - 56);
+          const panelH = Math.min(640, state.height - 56);
           const fullLeft = (state.width - panelW) / 2;
           const fullRight = fullLeft + panelW;
           const fullTop = (state.height - panelH) / 2;
@@ -439,7 +439,7 @@
 
           const cx = col * state.cellW + state.cellW / 2;
           const cy = row * state.cellH + state.cellH / 2;
-          const borderPad = 14;
+          const borderPad = 18;
 
           const insideFullPanel =
             cx > fullLeft &&
