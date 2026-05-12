@@ -367,9 +367,9 @@
 
   function getEmbeddedTextZones() {
     const instructionLines = [
-      "CLICK OR TAP THE FIELD",
-      "THE NOISE RESOLVES INTO",
-      "AN INITIAL AI CONSULTATION",
+      "Click or tap the field",
+      "to turn your data",
+      "into actionable insights",
     ];
 
     const instructionWidth = Math.max(...instructionLines.map((line) => line.length));
@@ -378,9 +378,9 @@
       {
         name: "brand",
         lines: ["CONNEEN AI"],
-        startCol: 2,
-        startRow: 1,
-        padX: 1,
+        startCol: 4,
+        startRow: 3,
+        padX: 2,
         padY: 1,
         alpha: 0.9,
         persistent: true,
@@ -388,9 +388,9 @@
       {
         name: "instruction",
         lines: instructionLines,
-        startCol: Math.max(2, state.cols - instructionWidth - 4),
-        startRow: Math.max(4, state.rows - instructionLines.length - 3),
-        padX: 1,
+        startCol: Math.max(4, state.cols - instructionWidth - 8),
+        startRow: Math.max(6, state.rows - instructionLines.length - 5),
+        padX: 2,
         padY: 1,
         alpha: 0.62,
         persistent: false,
