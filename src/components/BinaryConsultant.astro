@@ -272,10 +272,12 @@
       state.bits = new Uint8Array(count);
       state.settled = new Uint8Array(count);
       state.settleNoise = new Float32Array(count);
+
       for (let i = 0; i < count; i++) {
         state.bits[i] = Math.random() > 0.5 ? 1 : 0;
         state.settleNoise[i] = Math.random();
       }
+
       state.completed = false;
       state.borderRevealStartedAt = 0;
       chatShell.classList.remove("visible");
@@ -290,10 +292,14 @@
       y,
       radius: 0,
       speed: reducedMotion ? 36 : 7.8,
-      spacing: 54,
-      crestWidth: 16,
-      wakeFill: 230,
-      rings: 6,
+
+      // Three visible ripple ridges, like a droplet impact from above:
+      // the leading ridge is largest, the next is smaller, the third is smallest.
+      spacing: 62,
+      crestWidths: [34, 24, 16],
+      crestScales: [1.95, 1.38, 1.08],
+      wakeFill: 210,
+      rings: 3,
     });
 
     // Keep the active wave list small.
@@ -353,15 +359,30 @@
             // phase < 0 means the first ripple ridge has not reached this cell yet.
             if (phase < 0) continue;
 
-            const ringIndex = Math.max(0, Math.round(phase / wave.spacing));
-            const distanceFromRidge = Math.abs(phase - ringIndex * wave.spacing);
-            const ridgePressure = Math.max(0, 1 - distanceFromRidge / wave.crestWidth);
-            const wakePressure = Math.min(1, phase / wave.wakeFill) * 0.34;
-            const ringBonus = Math.min(0.22, ringIndex * 0.045);
+            let shouldSettle = false;
 
-            // Ridges convert cells first. The deeper wake finishes the conversion so
-            // the field still resolves cleanly into 1s instead of leaving holes.
-            if (ridgePressure + wakePressure + ringBonus > state.settleNoise[idx] || phase > wave.wakeFill) {
+            for (let ring = 0; ring < wave.rings; ring++) {
+              const ringPhase = phase - ring * wave.spacing;
+              const crestWidth = wave.crestWidths[ring] || wave.crestWidths[wave.crestWidths.length - 1];
+
+              if (ringPhase < -crestWidth || ringPhase > crestWidth) continue;
+
+              const ridgePressure = 1 - Math.abs(ringPhase) / crestWidth;
+              const ringBias = 0.18 + ring * 0.08;
+
+              if (ridgePressure + ringBias > state.settleNoise[idx]) {
+                shouldSettle = true;
+                break;
+              }
+            }
+
+            // The wake fills remaining holes only after the visible ripples have
+            // physically passed this cell. This prevents far corners from snapping early.
+            if (!shouldSettle && phase > wave.wakeFill) {
+              shouldSettle = true;
+            }
+
+            if (shouldSettle) {
               state.bits[idx] = 1;
               state.settled[idx] = 1;
               break;
@@ -373,7 +394,9 @@
       }
     }
 
-    if (state.started && settledCount / state.settled.length > 0.985) {
+    // Do not complete at 98.5%. That caused the far corners to snap to 1s before
+    // the ripple/wake reached them.
+    if (state.started && settledCount === state.settled.length) {
       completeIntro();
     }
   }
@@ -411,6 +434,60 @@
     return {
       scale,
       yOffset: -lift * 2.2,
+      glow: Math.min(1, glow),
+    };
+  }
+
+  function drawGlyph(text, x, y, scale = 1) {
+    if (Math.abs(scale - 1) < 0.01) {
+      ctx.fillText(text, x, y);
+      return;
+    }
+
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.scale(scale, scale);
+    ctx.fillText(text, 0, 0);
+    ctx.restore();
+  }
+
+  function getRippleEffect(x, y) {
+    if (reducedMotion || state.completed || !state.waves.length) {
+      return { scale: 1, yOffset: 0, glow: 0 };
+    }
+
+    let scaleBoost = 0;
+    let yOffset = 0;
+    let glow = 0;
+
+    for (const wave of state.waves) {
+      const dist = Math.hypot(x - wave.x, y - wave.y);
+      const phase = wave.radius - dist;
+
+      if (phase < -wave.crestWidths[0]) continue;
+
+      for (let ring = 0; ring < wave.rings; ring++) {
+        const crestWidth = wave.crestWidths[ring] || wave.crestWidths[wave.crestWidths.length - 1];
+        const crestScale = wave.crestScales[ring] || 1;
+        const ringPhase = phase - ring * wave.spacing;
+
+        if (ringPhase < -crestWidth || ringPhase > crestWidth) continue;
+
+        const ridge = 1 - Math.abs(ringPhase) / crestWidth;
+        const direction = ring % 2 === 0 ? 1 : -0.35;
+        const localScaleBoost = ridge * (crestScale - 1);
+
+        scaleBoost += localScaleBoost * direction;
+        yOffset += ridge * direction * -2.4;
+        glow += ridge * (1 - ring * 0.18);
+      }
+    }
+
+    const scale = Math.max(0.78, Math.min(1.95, 1 + scaleBoost));
+
+    return {
+      scale,
+      yOffset,
       glow: Math.min(1, glow),
     };
   }
@@ -544,7 +621,7 @@
 
         if (embeddedCell) {
           if (embeddedCell.type === "char") {
-            ctx.fillStyle = `rgba(132, 255, 164, ${embeddedCell.alpha})`;
+            ctx.fillStyle = `rgba(132, 255, 164, ${Math.min(1, embeddedCell.alpha + ripple.glow * 0.18)})`;
             drawGlyph(
               embeddedCell.char,
               cellX + waveOffset,
