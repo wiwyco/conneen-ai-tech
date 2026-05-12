@@ -508,28 +508,28 @@
       }
     }
 
-    if (!state.completed) {
-      const textWave = reducedMotion ? 0 : Math.sin(performance.now() / 900) * 0.8;
+    const textWave = reducedMotion ? 0 : Math.sin(performance.now() / 900) * 0.8;
 
-      drawGridText("CONNEEN AI", 24 + textWave, 22, {
-        fontSize: 14,
-        alpha: 0.9,
-        letterSpacing: 1,
-      });
+    drawGridText("CONNEEN AI", 24 + textWave, 22, {
+      fontSize: 14,
+      alpha: state.completed ? 0.48 : 0.9,
+      letterSpacing: 1,
+    });
 
-      if (state.width > 620) {
-        drawGridText(
-          "Click or tap the field. The noise resolves into signal, then into an initial AI consultation.",
-          state.width - 380 + textWave,
-          state.height - 48,
-          {
-            maxWidth: 356,
-            lineHeight: 18,
-            fontSize: 13,
-            alpha: 0.68,
-          }
-        );
-      }
+    if (state.width > 620) {
+      drawGridText(
+        state.completed
+          ? "Signal resolved. Begin the consultation."
+          : "Click or tap the field. The noise resolves into signal, then into an initial AI consultation.",
+        state.width - 380 + textWave,
+        state.height - 52,
+        {
+          maxWidth: 356,
+          lineHeight: 18,
+          fontSize: 13,
+          alpha: state.completed ? 0.42 : 0.68,
+        }
+      );
     }
 
     requestAnimationFrame(draw);
