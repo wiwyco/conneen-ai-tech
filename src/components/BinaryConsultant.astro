@@ -1,0 +1,519 @@
+---
+---
+
+<style>
+  :global(*) {
+    box-sizing: border-box;
+  }
+
+  :global(html),
+  :global(body) {
+    margin: 0;
+    width: 100%;
+    min-height: 100%;
+    background: #020403;
+    color: #d8ffe2;
+    font-family:
+      ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono",
+      "Courier New", monospace;
+  }
+
+  .page {
+    position: relative;
+    min-height: 100vh;
+    overflow: hidden;
+    background:
+      radial-gradient(circle at 30% 20%, rgba(48, 255, 112, 0.13), transparent 32rem),
+      radial-gradient(circle at 70% 80%, rgba(22, 148, 255, 0.1), transparent 34rem),
+      #020403;
+  }
+
+  #binary-canvas {
+    position: fixed;
+    inset: 0;
+    width: 100vw;
+    height: 100vh;
+    display: block;
+  }
+
+  .brand {
+    position: fixed;
+    top: 24px;
+    left: 24px;
+    z-index: 3;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: rgba(216, 255, 226, 0.9);
+    font-size: 14px;
+    pointer-events: none;
+  }
+
+  .hint {
+    position: fixed;
+    right: 24px;
+    bottom: 22px;
+    z-index: 3;
+    max-width: 360px;
+    color: rgba(216, 255, 226, 0.68);
+    font-size: 13px;
+    line-height: 1.45;
+    pointer-events: none;
+  }
+
+  .chat-shell {
+    position: fixed;
+    inset: 50%;
+    z-index: 4;
+    width: min(920px, calc(100vw - 28px));
+    height: min(680px, calc(100vh - 28px));
+    transform: translate(-50%, -50%) scale(0.97);
+    opacity: 0;
+    pointer-events: none;
+    transition:
+      opacity 900ms ease,
+      transform 900ms ease;
+  }
+
+  .chat-shell.visible {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+    pointer-events: auto;
+  }
+
+  .chat-panel {
+    height: 100%;
+    display: grid;
+    grid-template-rows: auto 1fr auto;
+    background: rgba(2, 4, 3, 0.84);
+    border: 1px solid rgba(132, 255, 164, 0.55);
+    outline: 12px solid rgba(0, 0, 0, 0.12);
+    box-shadow:
+      0 0 0 1px rgba(216, 255, 226, 0.08) inset,
+      0 0 60px rgba(46, 255, 113, 0.12),
+      0 32px 100px rgba(0, 0, 0, 0.55);
+    backdrop-filter: blur(8px);
+  }
+
+  .chat-header {
+    padding: 18px 20px;
+    border-bottom: 1px solid rgba(132, 255, 164, 0.22);
+  }
+
+  .eyebrow {
+    margin: 0 0 8px;
+    color: rgba(132, 255, 164, 0.78);
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+  }
+
+  h1 {
+    margin: 0;
+    font-family:
+      Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+      sans-serif;
+    color: #f1fff4;
+    font-size: clamp(28px, 4vw, 48px);
+    line-height: 1;
+    letter-spacing: -0.04em;
+  }
+
+  .chat-log {
+    overflow: auto;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    scrollbar-color: rgba(132, 255, 164, 0.45) transparent;
+  }
+
+  .message {
+    max-width: min(680px, 92%);
+    padding: 13px 15px;
+    border: 1px solid rgba(132, 255, 164, 0.22);
+    background: rgba(216, 255, 226, 0.06);
+    color: rgba(241, 255, 244, 0.92);
+    line-height: 1.5;
+    white-space: pre-wrap;
+  }
+
+  .message.assistant {
+    align-self: flex-start;
+  }
+
+  .message.user {
+    align-self: flex-end;
+    border-color: rgba(81, 170, 255, 0.35);
+    background: rgba(81, 170, 255, 0.08);
+  }
+
+  .chat-form {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 10px;
+    padding: 14px;
+    border-top: 1px solid rgba(132, 255, 164, 0.22);
+  }
+
+  .chat-form textarea {
+    width: 100%;
+    min-height: 54px;
+    max-height: 180px;
+    resize: vertical;
+    border: 1px solid rgba(132, 255, 164, 0.33);
+    background: rgba(0, 0, 0, 0.42);
+    color: #f1fff4;
+    padding: 14px;
+    font: inherit;
+    outline: none;
+  }
+
+  .chat-form textarea:focus {
+    border-color: rgba(132, 255, 164, 0.78);
+    box-shadow: 0 0 0 3px rgba(132, 255, 164, 0.12);
+  }
+
+  .chat-form button {
+    border: 1px solid rgba(132, 255, 164, 0.55);
+    background: rgba(132, 255, 164, 0.12);
+    color: #f1fff4;
+    padding: 0 18px;
+    font: inherit;
+    cursor: pointer;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+
+  .chat-form button:hover {
+    background: rgba(132, 255, 164, 0.2);
+  }
+
+  .chat-form button:disabled {
+    cursor: wait;
+    opacity: 0.58;
+  }
+
+  @media (max-width: 620px) {
+    .brand {
+      top: 14px;
+      left: 14px;
+      font-size: 12px;
+    }
+
+    .hint {
+      display: none;
+    }
+
+    .chat-form {
+      grid-template-columns: 1fr;
+    }
+
+    .chat-form button {
+      min-height: 46px;
+    }
+  }
+</style>
+
+<main class="page">
+  <canvas id="binary-canvas" aria-hidden="true"></canvas>
+  <div class="brand">Conneen AI</div>
+  <div class="hint">
+    Move through the field. The noise resolves into signal, then into an initial AI consultation.
+  </div>
+
+  <section class="chat-shell" id="chat-shell" aria-label="Conneen AI consultation chat">
+    <div class="chat-panel">
+      <header class="chat-header">
+        <p class="eyebrow">Initial consultation</p>
+        <h1>What workflow should AI fix first?</h1>
+      </header>
+
+      <div class="chat-log" id="chat-log">
+        <div class="message assistant">
+          I’m Conneen AI’s consultation assistant. Tell me what part of your business is slow, repetitive, expensive, or hard to scale, and I’ll help shape it into a practical AI or automation pilot.
+        </div>
+      </div>
+
+      <form class="chat-form" id="chat-form">
+        <textarea
+          id="chat-input"
+          name="message"
+          placeholder="Example: We spend hours turning calls, emails, or spreadsheets into quotes..."
+          autocomplete="off"
+          required
+        ></textarea>
+        <button id="send-button" type="submit">Send</button>
+      </form>
+    </div>
+  </section>
+</main>
+
+<script>
+  const canvas = document.getElementById("binary-canvas");
+  const ctx = canvas.getContext("2d", { alpha: true });
+  const chatShell = document.getElementById("chat-shell");
+  const chatLog = document.getElementById("chat-log");
+  const chatForm = document.getElementById("chat-form");
+  const chatInput = document.getElementById("chat-input");
+  const sendButton = document.getElementById("send-button");
+
+  const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  const state = {
+    dpr: 1,
+    width: 0,
+    height: 0,
+    cellW: 14,
+    cellH: 18,
+    cols: 0,
+    rows: 0,
+    bits: new Uint8Array(0),
+    settled: new Uint8Array(0),
+    waves: [],
+    started: false,
+    completed: false,
+    lastMoveAt: 0,
+  };
+
+  function resize() {
+    state.dpr = Math.min(window.devicePixelRatio || 1, 1.5);
+    state.width = window.innerWidth;
+    state.height = window.innerHeight;
+    canvas.width = Math.floor(state.width * state.dpr);
+    canvas.height = Math.floor(state.height * state.dpr);
+    canvas.style.width = `${state.width}px`;
+    canvas.style.height = `${state.height}px`;
+    ctx.setTransform(state.dpr, 0, 0, state.dpr, 0, 0);
+
+    const nextCols = Math.ceil(state.width / state.cellW) + 2;
+    const nextRows = Math.ceil(state.height / state.cellH) + 2;
+    const changed = nextCols !== state.cols || nextRows !== state.rows;
+
+    state.cols = nextCols;
+    state.rows = nextRows;
+
+    if (changed) {
+      const count = state.cols * state.rows;
+      state.bits = new Uint8Array(count);
+      state.settled = new Uint8Array(count);
+      for (let i = 0; i < count; i++) {
+        state.bits[i] = Math.random() > 0.5 ? 1 : 0;
+      }
+      state.completed = false;
+      chatShell.classList.remove("visible");
+    }
+  }
+
+  function addWave(x, y) {
+    if (state.completed) return;
+    state.started = true;
+    state.waves.push({
+      x,
+      y,
+      radius: 0,
+      width: 42,
+      speed: reducedMotion ? 36 : 10,
+    });
+
+    // Keep the active wave list small.
+    if (state.waves.length > 8) state.waves.shift();
+  }
+
+  function pointerPosition(event) {
+    const touch = event.touches?.[0] || event.changedTouches?.[0];
+    return {
+      x: touch ? touch.clientX : event.clientX,
+      y: touch ? touch.clientY : event.clientY,
+    };
+  }
+
+  function handlePointer(event) {
+    const now = performance.now();
+    if (event.type === "mousemove" && now - state.lastMoveAt < 80) return;
+    state.lastMoveAt = now;
+    const p = pointerPosition(event);
+    addWave(p.x, p.y);
+  }
+
+  function completeIntro() {
+    if (state.completed) return;
+    state.completed = true;
+    state.bits.fill(1);
+
+    setTimeout(() => {
+      chatShell.classList.add("visible");
+      chatInput.focus();
+    }, 450);
+  }
+
+  function updateWaves() {
+    if (!state.waves.length) return;
+
+    let settledCount = 0;
+
+    for (const wave of state.waves) {
+      wave.radius += wave.speed;
+    }
+
+    const maxRadius = Math.hypot(state.width, state.height) + 80;
+    state.waves = state.waves.filter((wave) => wave.radius < maxRadius);
+
+    for (let row = 0; row < state.rows; row++) {
+      const y = row * state.cellH + state.cellH * 0.5;
+
+      for (let col = 0; col < state.cols; col++) {
+        const x = col * state.cellW + state.cellW * 0.5;
+        const idx = row * state.cols + col;
+
+        if (!state.settled[idx]) {
+          for (const wave of state.waves) {
+            const dist = Math.hypot(x - wave.x, y - wave.y);
+            if (Math.abs(dist - wave.radius) < wave.width || dist < wave.radius - wave.width) {
+              state.bits[idx] = 1;
+              state.settled[idx] = 1;
+              break;
+            }
+          }
+        }
+
+        settledCount += state.settled[idx];
+      }
+    }
+
+    if (state.started && settledCount / state.settled.length > 0.985) {
+      completeIntro();
+    }
+  }
+
+  function draw() {
+    updateWaves();
+
+    ctx.clearRect(0, 0, state.width, state.height);
+    ctx.font = "14px ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+
+    const t = performance.now() / 1000;
+
+    for (let row = 0; row < state.rows; row++) {
+      const y = row * state.cellH;
+
+      for (let col = 0; col < state.cols; col++) {
+        const idx = row * state.cols + col;
+        const bit = state.completed ? 1 : state.bits[idx];
+
+        const waveOffset = reducedMotion ? 0 : Math.sin(t * 1.7 + col * 0.45 + row * 0.22) * 1;
+        const alpha = bit ? 0.86 : 0.46;
+
+        // The chat reveal needs a blank center with 0s as border and 1s outside.
+        if (state.completed) {
+          const panelW = Math.min(920, state.width - 28);
+          const panelH = Math.min(680, state.height - 28);
+          const left = (state.width - panelW) / 2;
+          const right = left + panelW;
+          const top = (state.height - panelH) / 2;
+          const bottom = top + panelH;
+          const cx = col * state.cellW + state.cellW / 2;
+          const cy = row * state.cellH + state.cellH / 2;
+          const borderPad = 14;
+          const inside = cx > left && cx < right && cy > top && cy < bottom;
+          const border =
+            cx > left - borderPad &&
+            cx < right + borderPad &&
+            cy > top - borderPad &&
+            cy < bottom + borderPad &&
+            !inside;
+
+          if (inside) continue;
+          ctx.fillStyle = border
+            ? "rgba(132, 255, 164, 0.72)"
+            : `rgba(132, 255, 164, ${alpha})`;
+          ctx.fillText(border ? "0" : "1", col * state.cellW + waveOffset, y);
+          continue;
+        }
+
+        ctx.fillStyle = bit
+          ? `rgba(132, 255, 164, ${alpha})`
+          : `rgba(216, 255, 226, ${alpha * 0.7})`;
+
+        ctx.fillText(String(bit), col * state.cellW + state.cellW / 2 + waveOffset, y);
+      }
+    }
+
+    requestAnimationFrame(draw);
+  }
+
+  function addMessage(role, text) {
+    const div = document.createElement("div");
+    div.className = `message ${role}`;
+    div.textContent = text;
+    chatLog.appendChild(div);
+    chatLog.scrollTop = chatLog.scrollHeight;
+  }
+
+  function getMessagesForApi() {
+    return Array.from(chatLog.querySelectorAll(".message")).map((el) => ({
+      role: el.classList.contains("user") ? "user" : "assistant",
+      content: el.textContent || "",
+    }));
+  }
+
+  chatForm.addEventListener("submit", async (event) => {
+    event.preventDefault();
+
+    const text = chatInput.value.trim();
+    if (!text) return;
+
+    addMessage("user", text);
+    chatInput.value = "";
+    sendButton.disabled = true;
+    sendButton.textContent = "Thinking";
+
+    try {
+      const res = await fetch("/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ messages: getMessagesForApi() }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Request failed.");
+
+      addMessage("assistant", data.reply || "I had trouble generating a response.");
+    } catch (error) {
+      addMessage(
+        "assistant",
+        "I could not reach the consultation service. Check the server logs and confirm OPENAI_API_KEY is configured."
+      );
+    } finally {
+      sendButton.disabled = false;
+      sendButton.textContent = "Send";
+      chatInput.focus();
+    }
+  });
+
+  chatInput.addEventListener("keydown", (event) => {
+    if (event.key === "Enter" && !event.shiftKey) {
+      event.preventDefault();
+      chatForm.requestSubmit();
+    }
+  });
+
+  window.addEventListener("resize", resize);
+  window.addEventListener("mousemove", handlePointer, { passive: true });
+  window.addEventListener("click", handlePointer, { passive: true });
+  window.addEventListener("touchstart", handlePointer, { passive: true });
+  window.addEventListener("touchmove", handlePointer, { passive: true });
+
+  resize();
+
+  if (reducedMotion) {
+    setTimeout(() => completeIntro(), 700);
+  } else {
+    setTimeout(() => {
+      if (!state.started) addWave(state.width / 2, state.height / 2);
+    }, 1200);
+  }
+
+  draw();
+</script>

@@ -1,0 +1,20 @@
+{
+  "name": "conneen-ai-astro-chat-starter",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "astro dev",
+    "build": "astro build",
+    "preview": "astro preview",
+    "astro": "astro"
+  },
+  "dependencies": {
+    "@astrojs/vercel": "latest",
+    "astro": "latest",
+    "openai": "latest"
+  },
+  "devDependencies": {
+    "typescript": "latest"
+  }
+}
