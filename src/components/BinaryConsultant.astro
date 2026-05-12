@@ -61,12 +61,18 @@
   }
 
   .chat-shell {
+    --chat-offset-x: 8px;
+    --chat-offset-y: -12px;
+
     position: fixed;
     inset: 50%;
     z-index: 4;
     width: min(880px, calc(100vw - 56px));
     height: min(640px, calc(100vh - 56px));
-    transform: translate(-50%, -50%) scale(0.97);
+    transform: translate(
+      calc(-50% + var(--chat-offset-x)),
+      calc(-50% + var(--chat-offset-y))
+    ) scale(0.97);
     opacity: 0;
     pointer-events: none;
     transition:
@@ -76,7 +82,10 @@
 
   .chat-shell.visible {
     opacity: 1;
-    transform: translate(-50%, -50%) scale(1);
+    transform: translate(
+      calc(-50% + var(--chat-offset-x)),
+      calc(-50% + var(--chat-offset-y))
+    ) scale(1);
     pointer-events: auto;
   }
 
@@ -274,6 +283,8 @@
     completed: false,
     borderRevealStartedAt: 0,
     borderRevealDuration: 2400,
+    chatOffsetX: 8,
+    chatOffsetY: -12,
   };
 
   function resize() {
@@ -417,13 +428,13 @@
         if (state.completed) {
           const panelW = Math.min(880, state.width - 56);
           const panelH = Math.min(640, state.height - 56);
-          const fullLeft = (state.width - panelW) / 2;
-          const fullRight = fullLeft + panelW;
-          const fullTop = (state.height - panelH) / 2;
-          const fullBottom = fullTop + panelH;
+          const centerX = state.width / 2 + state.chatOffsetX;
+          const centerY = state.height / 2 + state.chatOffsetY;
 
-          const centerX = state.width / 2;
-          const centerY = state.height / 2;
+          const fullLeft = centerX - panelW / 2;
+          const fullRight = centerX + panelW / 2;
+          const fullTop = centerY - panelH / 2;
+          const fullBottom = centerY + panelH / 2;
 
           const elapsed = performance.now() - state.borderRevealStartedAt;
           const rawProgress = Math.min(1, elapsed / state.borderRevealDuration);
