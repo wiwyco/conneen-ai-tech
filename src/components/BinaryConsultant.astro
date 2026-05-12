@@ -406,56 +406,6 @@
       return { scale: 1, yOffset: 0, glow: 0 };
     }
 
-    let lift = 0;
-    let glow = 0;
-
-    for (const wave of state.waves) {
-      const dist = Math.hypot(x - wave.x, y - wave.y);
-      const phase = wave.radius - dist;
-
-      if (phase < -wave.crestWidth) continue;
-
-      const ringIndex = Math.round(phase / wave.spacing);
-      if (ringIndex < 0 || ringIndex > wave.rings) continue;
-
-      const distanceFromRidge = Math.abs(phase - ringIndex * wave.spacing);
-      if (distanceFromRidge > wave.crestWidth) continue;
-
-      const ridge = 1 - distanceFromRidge / wave.crestWidth;
-      const decay = Math.max(0, 1 - ringIndex / (wave.rings + 1));
-      const direction = ringIndex % 2 === 0 ? 1 : -0.58;
-      const force = ridge * decay;
-
-      lift += force * direction;
-      glow += force;
-    }
-
-    const scale = Math.max(0.72, Math.min(1.72, 1 + lift * 0.52));
-    return {
-      scale,
-      yOffset: -lift * 2.2,
-      glow: Math.min(1, glow),
-    };
-  }
-
-  function drawGlyph(text, x, y, scale = 1) {
-    if (Math.abs(scale - 1) < 0.01) {
-      ctx.fillText(text, x, y);
-      return;
-    }
-
-    ctx.save();
-    ctx.translate(x, y);
-    ctx.scale(scale, scale);
-    ctx.fillText(text, 0, 0);
-    ctx.restore();
-  }
-
-  function getRippleEffect(x, y) {
-    if (reducedMotion || state.completed || !state.waves.length) {
-      return { scale: 1, yOffset: 0, glow: 0 };
-    }
-
     let scaleBoost = 0;
     let yOffset = 0;
     let glow = 0;
