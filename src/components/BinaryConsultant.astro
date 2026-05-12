@@ -36,16 +36,6 @@
     display: block;
   }
 
-  .brand {
-    top: 14px;
-    left: 14px;
-    font-size: 12px;
-  }
-
-  .hint {
-    display: none;
-  }
-
   .chat-shell {
     --chat-offset-x: 8px;
     --chat-offset-y: -12px;
@@ -375,47 +365,87 @@
       : 1 - Math.pow(-2 * t + 2, 3) / 2;
   }
 
-  function drawGridText(text, x, y, options = {}) {
-    const {
-      align = "left",
-      maxWidth = state.width - 48,
-      lineHeight = 18,
-      alpha = 0.82,
-      fontSize = 13,
-      letterSpacing = 0,
-    } = options;
+  function getEmbeddedTextZones() {
+    const instructionLines = [
+      "CLICK OR TAP THE FIELD",
+      "THE NOISE RESOLVES INTO",
+      "AN INITIAL AI CONSULTATION",
+    ];
 
-    ctx.save();
-    ctx.font = `${fontSize}px ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace`;
-    ctx.textAlign = align;
-    ctx.textBaseline = "top";
-    ctx.fillStyle = `rgba(216, 255, 226, ${alpha})`;
+    const instructionWidth = Math.max(...instructionLines.map((line) => line.length));
 
-    const words = text.split(" ");
-    const lines = [];
-    let line = "";
+    return [
+      {
+        name: "brand",
+        lines: ["CONNEEN AI"],
+        startCol: 2,
+        startRow: 1,
+        padX: 1,
+        padY: 1,
+        alpha: 0.9,
+        persistent: true,
+      },
+      {
+        name: "instruction",
+        lines: instructionLines,
+        startCol: Math.max(2, state.cols - instructionWidth - 4),
+        startRow: Math.max(4, state.rows - instructionLines.length - 3),
+        padX: 1,
+        padY: 1,
+        alpha: 0.62,
+        persistent: false,
+      },
+    ];
+  }
 
-    for (const word of words) {
-      const testLine = line ? `${line} ${word}` : word;
-      if (ctx.measureText(testLine).width > maxWidth && line) {
-        lines.push(line);
-        line = word;
-      } else {
-        line = testLine;
+  function getEmbeddedCell(col, row, idx) {
+    const zones = getEmbeddedTextZones();
+
+    for (const zone of zones) {
+      if (state.completed && !zone.persistent) continue;
+
+      // Non-persistent text should be wiped out by the wave.
+      // Once that cell settles, it goes back to normal grid behavior, which becomes a 1.
+      if (!zone.persistent && state.settled[idx]) continue;
+
+      const textW = Math.max(...zone.lines.map((line) => line.length));
+      const textH = zone.lines.length;
+
+      const boxLeft = zone.startCol - zone.padX;
+      const boxRight = zone.startCol + textW + zone.padX - 1;
+      const boxTop = zone.startRow - zone.padY;
+      const boxBottom = zone.startRow + textH + zone.padY - 1;
+
+      const inBox =
+        col >= boxLeft &&
+        col <= boxRight &&
+        row >= boxTop &&
+        row <= boxBottom;
+
+      if (!inBox) continue;
+
+      const textRow = row - zone.startRow;
+      const textCol = col - zone.startCol;
+      const line = zone.lines[textRow];
+
+      if (line && textCol >= 0 && textCol < line.length) {
+        const char = line[textCol];
+
+        if (char !== " ") {
+          return {
+            type: "char",
+            char,
+            alpha: zone.alpha,
+          };
+        }
       }
+
+      return {
+        type: "blank",
+      };
     }
 
-    if (line) lines.push(line);
-
-    for (let i = 0; i < lines.length; i++) {
-      const lineText = letterSpacing
-        ? lines[i].split("").join(" ".repeat(letterSpacing))
-        : lines[i];
-
-      ctx.fillText(lineText, x, y + i * lineHeight);
-    }
-
-    ctx.restore();
+    return null;
   }
 
   function draw() {
@@ -437,6 +467,22 @@
 
         const waveOffset = reducedMotion ? 0 : Math.sin(t * 1.7 + col * 0.45 + row * 0.22) * 1;
         const alpha = bit ? 0.86 : 0.46;
+
+        const embeddedCell = getEmbeddedCell(col, row, idx);
+
+        if (embeddedCell) {
+          if (embeddedCell.type === "char") {
+            ctx.fillStyle = `rgba(132, 255, 164, ${embeddedCell.alpha})`;
+            ctx.fillText(
+              embeddedCell.char,
+              col * state.cellW + state.cellW / 2 + waveOffset,
+              y
+            );
+          }
+
+          // Blank embedded cells create readable padding around the text.
+          continue;
+        }
 
         // The chat reveal needs a blank center with 0s as border and 1s outside.
         // After the wave finishes, the 0 border grows outward from the center instead of snapping in.
@@ -506,30 +552,6 @@
 
         ctx.fillText(String(bit), col * state.cellW + state.cellW / 2 + waveOffset, y);
       }
-    }
-
-    const textWave = reducedMotion ? 0 : Math.sin(performance.now() / 900) * 0.8;
-
-    drawGridText("CONNEEN AI", 24 + textWave, 22, {
-      fontSize: 14,
-      alpha: state.completed ? 0.48 : 0.9,
-      letterSpacing: 1,
-    });
-
-    if (state.width > 620) {
-      drawGridText(
-        state.completed
-          ? "Signal resolved. Begin the consultation."
-          : "Click or tap the field. The noise resolves into signal, then into an initial AI consultation.",
-        state.width - 380 + textWave,
-        state.height - 52,
-        {
-          maxWidth: 356,
-          lineHeight: 18,
-          fontSize: 13,
-          alpha: state.completed ? 0.42 : 0.68,
-        }
-      );
     }
 
     requestAnimationFrame(draw);
