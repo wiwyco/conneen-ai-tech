@@ -503,10 +503,6 @@
 
   if (reducedMotion) {
     setTimeout(() => completeIntro(), 700);
-  } else {
-    setTimeout(() => {
-      if (!state.started) addWave(state.width / 2, state.height / 2);
-    }, 1200);
   }
 
   draw();
