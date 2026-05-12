@@ -70,8 +70,8 @@
     opacity: 0;
     pointer-events: none;
     transition:
-      opacity 900ms ease,
-      transform 900ms ease;
+      opacity 1200ms ease,
+      transform 1200ms ease;
   }
 
   .chat-shell.visible {
@@ -273,7 +273,7 @@
     started: false,
     completed: false,
     borderRevealStartedAt: 0,
-    borderRevealDuration: 1400,
+    borderRevealDuration: 2400,
   };
 
   function resize() {
@@ -386,8 +386,10 @@
     }
   }
 
-  function easeOutCubic(t) {
-    return 1 - Math.pow(1 - t, 3);
+  function easeInOutCubic(t) {
+    return t < 0.5
+      ? 4 * t * t * t
+      : 1 - Math.pow(-2 * t + 2, 3) / 2;
   }
 
   function draw() {
@@ -425,7 +427,7 @@
 
           const elapsed = performance.now() - state.borderRevealStartedAt;
           const rawProgress = Math.min(1, elapsed / state.borderRevealDuration);
-          const progress = easeOutCubic(rawProgress);
+          const progress = easeInOutCubic(rawProgress);
 
           const revealW = panelW * progress;
           const revealH = panelH * progress;
@@ -464,7 +466,11 @@
             ? "rgba(132, 255, 164, 0.72)"
             : `rgba(132, 255, 164, ${alpha})`;
 
-          ctx.fillText(border ? "0" : "1", col * state.cellW + waveOffset, y);
+          ctx.fillText(
+            border ? "0" : "1",
+            col * state.cellW + state.cellW / 2 + waveOffset,
+            y
+          );
           continue;
         }
 
