@@ -11,8 +11,8 @@
     margin: 0;
     width: 100%;
     min-height: 100%;
-    background: #020403;
-    color: #d8ffe2;
+    background: #050505;
+    color: #e7e7e7;
     font-family:
       ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono",
       "Courier New", monospace;
@@ -23,9 +23,9 @@
     min-height: 100vh;
     overflow: hidden;
     background:
-      radial-gradient(circle at 30% 20%, rgba(48, 255, 112, 0.13), transparent 32rem),
-      radial-gradient(circle at 70% 80%, rgba(22, 148, 255, 0.1), transparent 34rem),
-      #020403;
+      radial-gradient(circle at 30% 20%, rgba(255, 255, 255, 0.10), transparent 32rem),
+      radial-gradient(circle at 70% 80%, rgba(160, 160, 160, 0.08), transparent 34rem),
+      #050505;
   }
 
   #binary-canvas {
@@ -69,24 +69,24 @@
     height: 100%;
     display: grid;
     grid-template-rows: auto 1fr auto;
-    background: rgba(2, 4, 3, 0.84);
-    border: 1px solid rgba(132, 255, 164, 0.55);
+    background: rgba(8, 8, 8, 0.88);
+    border: 1px solid rgba(220, 220, 220, 0.55);
     outline: 6px solid rgba(0, 0, 0, 0.12);
     box-shadow:
-      0 0 0 1px rgba(216, 255, 226, 0.08) inset,
-      0 0 60px rgba(46, 255, 113, 0.12),
+      0 0 0 1px rgba(235, 235, 235, 0.08) inset,
+      0 0 60px rgba(255, 255, 255, 0.10),
       0 32px 100px rgba(0, 0, 0, 0.55);
     backdrop-filter: blur(8px);
   }
 
   .chat-header {
     padding: 18px 20px;
-    border-bottom: 1px solid rgba(132, 255, 164, 0.22);
+    border-bottom: 1px solid rgba(220, 220, 220, 0.22);
   }
 
   .eyebrow {
     margin: 0 0 8px;
-    color: rgba(132, 255, 164, 0.78);
+    color: rgba(220, 220, 220, 0.78);
     font-size: 12px;
     text-transform: uppercase;
     letter-spacing: 0.14em;
@@ -97,7 +97,7 @@
     font-family:
       Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
       sans-serif;
-    color: #f1fff4;
+    color: #f5f5f5;
     font-size: clamp(28px, 4vw, 48px);
     line-height: 1;
     letter-spacing: -0.04em;
@@ -115,15 +115,17 @@
   .message {
     max-width: min(680px, 92%);
     padding: 13px 15px;
-    border: 1px solid rgba(132, 255, 164, 0.22);
-    background: rgba(216, 255, 226, 0.06);
-    color: rgba(241, 255, 244, 0.92);
+    border: 1px solid rgba(220, 220, 220, 0.22);
+    background: rgba(235, 235, 235, 0.06);
+    color: rgba(245, 245, 245, 0.92);
     line-height: 1.5;
     white-space: pre-wrap;
   }
 
-  .message.assistant {
-    align-self: flex-start;
+  .message.user {
+    align-self: flex-end;
+    border-color: rgba(235, 235, 235, 0.28);
+    background: rgba(235, 235, 235, 0.08);
   }
 
   .message.user {
@@ -137,7 +139,7 @@
     grid-template-columns: 1fr auto;
     gap: 10px;
     padding: 12px;
-    border-top: 1px solid rgba(132, 255, 164, 0.22);
+    border-top: 1px solid rgba(220, 220, 220, 0.22);
   }
 
   .chat-form textarea {
@@ -145,23 +147,23 @@
     min-height: 54px;
     max-height: 180px;
     resize: vertical;
-    border: 1px solid rgba(132, 255, 164, 0.33);
-    background: rgba(0, 0, 0, 0.42);
-    color: #f1fff4;
+    border: 1px solid rgba(220, 220, 220, 0.33);
+    background: rgba(0, 0, 0, 0.58);
+    color: #f5f5f5;
     padding: 14px;
     font: inherit;
     outline: none;
   }
 
   .chat-form textarea:focus {
-    border-color: rgba(132, 255, 164, 0.78);
-    box-shadow: 0 0 0 3px rgba(132, 255, 164, 0.12);
+    border-color: rgba(220, 220, 220, 0.78);
+    box-shadow: 0 0 0 3px rgba(220, 220, 220, 0.12);
   }
 
   .chat-form button {
-    border: 1px solid rgba(132, 255, 164, 0.55);
-    background: rgba(132, 255, 164, 0.12);
-    color: #f1fff4;
+    border: 1px solid rgba(220, 220, 220, 0.55);
+    background: rgba(220, 220, 220, 0.12);
+    color: #f5f5f5;
     padding: 0 18px;
     font: inherit;
     cursor: pointer;
@@ -170,7 +172,7 @@
   }
 
   .chat-form button:hover {
-    background: rgba(132, 255, 164, 0.2);
+    background: rgba(220, 220, 220, 0.20);
   }
 
   .chat-form button:disabled {
@@ -571,7 +573,7 @@
 
         if (embeddedCell) {
           if (embeddedCell.type === "char") {
-            ctx.fillStyle = `rgba(132, 255, 164, ${Math.min(1, embeddedCell.alpha + ripple.glow * 0.18)})`;
+            ctx.fillStyle = `rgba(235, 235, 235, ${Math.min(1, embeddedCell.alpha + ripple.glow * 0.18)})`;
             drawGlyph(
               embeddedCell.char,
               cellX + waveOffset,
@@ -635,8 +637,8 @@
           if (insideRevealedPanel) continue;
 
           ctx.fillStyle = border
-            ? "rgba(132, 255, 164, 0.72)"
-            : `rgba(132, 255, 164, ${alpha})`;
+            ? "rgba(235, 235, 235, 0.72)"
+            : `rgba(235, 235, 235, ${alpha})`;
 
           drawGlyph(
             border ? "0" : "1",
@@ -648,8 +650,8 @@
         }
 
         ctx.fillStyle = bit
-          ? `rgba(132, 255, 164, ${alpha})`
-          : `rgba(216, 255, 226, ${alpha * 0.7})`;
+          ? `rgba(235, 235, 235, ${alpha})`
+          : `rgba(155, 155, 155, ${alpha * 0.78})`;
 
         drawGlyph(String(bit), cellX + waveOffset, cellY + ripple.yOffset, ripple.scale);
       }
