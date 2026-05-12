@@ -67,8 +67,8 @@
     position: fixed;
     inset: 50%;
     z-index: 4;
-    width: min(880px, calc(100vw - 56px));
-    height: min(640px, calc(100vh - 56px));
+    width: min(840px, calc(100vw - 96px));
+    height: min(600px, calc(100vh - 96px));
     transform: translate(
       calc(-50% + var(--chat-offset-x)),
       calc(-50% + var(--chat-offset-y))
@@ -95,7 +95,7 @@
     grid-template-rows: auto 1fr auto;
     background: rgba(2, 4, 3, 0.84);
     border: 1px solid rgba(132, 255, 164, 0.55);
-    outline: 12px solid rgba(0, 0, 0, 0.12);
+    outline: 6px solid rgba(0, 0, 0, 0.12);
     box-shadow:
       0 0 0 1px rgba(216, 255, 226, 0.08) inset,
       0 0 60px rgba(46, 255, 113, 0.12),
@@ -160,7 +160,7 @@
     display: grid;
     grid-template-columns: 1fr auto;
     gap: 10px;
-    padding: 14px;
+    padding: 12px;
     border-top: 1px solid rgba(132, 255, 164, 0.22);
   }
 
