@@ -240,6 +240,7 @@
     rows: 0,
     bits: new Uint8Array(0),
     settled: new Uint8Array(0),
+    settleNoise: new Float32Array(0),
     waves: [],
     started: false,
     completed: false,
@@ -270,8 +271,10 @@
       const count = state.cols * state.rows;
       state.bits = new Uint8Array(count);
       state.settled = new Uint8Array(count);
+      state.settleNoise = new Float32Array(count);
       for (let i = 0; i < count; i++) {
         state.bits[i] = Math.random() > 0.5 ? 1 : 0;
+        state.settleNoise[i] = Math.random();
       }
       state.completed = false;
       state.borderRevealStartedAt = 0;
@@ -286,8 +289,11 @@
       x,
       y,
       radius: 0,
-      width: 42,
-      speed: reducedMotion ? 36 : 10,
+      speed: reducedMotion ? 36 : 7.8,
+      spacing: 54,
+      crestWidth: 16,
+      wakeFill: 230,
+      rings: 6,
     });
 
     // Keep the active wave list small.
@@ -329,7 +335,7 @@
       wave.radius += wave.speed;
     }
 
-    const maxRadius = Math.hypot(state.width, state.height) + 80;
+    const maxRadius = Math.hypot(state.width, state.height) + 260;
     state.waves = state.waves.filter((wave) => wave.radius < maxRadius);
 
     for (let row = 0; row < state.rows; row++) {
@@ -342,7 +348,20 @@
         if (!state.settled[idx]) {
           for (const wave of state.waves) {
             const dist = Math.hypot(x - wave.x, y - wave.y);
-            if (Math.abs(dist - wave.radius) < wave.width || dist < wave.radius - wave.width) {
+            const phase = wave.radius - dist;
+
+            // phase < 0 means the first ripple ridge has not reached this cell yet.
+            if (phase < 0) continue;
+
+            const ringIndex = Math.max(0, Math.round(phase / wave.spacing));
+            const distanceFromRidge = Math.abs(phase - ringIndex * wave.spacing);
+            const ridgePressure = Math.max(0, 1 - distanceFromRidge / wave.crestWidth);
+            const wakePressure = Math.min(1, phase / wave.wakeFill) * 0.34;
+            const ringBonus = Math.min(0.22, ringIndex * 0.045);
+
+            // Ridges convert cells first. The deeper wake finishes the conversion so
+            // the field still resolves cleanly into 1s instead of leaving holes.
+            if (ridgePressure + wakePressure + ringBonus > state.settleNoise[idx] || phase > wave.wakeFill) {
               state.bits[idx] = 1;
               state.settled[idx] = 1;
               break;
@@ -357,6 +376,56 @@
     if (state.started && settledCount / state.settled.length > 0.985) {
       completeIntro();
     }
+  }
+
+  function getRippleEffect(x, y) {
+    if (reducedMotion || state.completed || !state.waves.length) {
+      return { scale: 1, yOffset: 0, glow: 0 };
+    }
+
+    let lift = 0;
+    let glow = 0;
+
+    for (const wave of state.waves) {
+      const dist = Math.hypot(x - wave.x, y - wave.y);
+      const phase = wave.radius - dist;
+
+      if (phase < -wave.crestWidth) continue;
+
+      const ringIndex = Math.round(phase / wave.spacing);
+      if (ringIndex < 0 || ringIndex > wave.rings) continue;
+
+      const distanceFromRidge = Math.abs(phase - ringIndex * wave.spacing);
+      if (distanceFromRidge > wave.crestWidth) continue;
+
+      const ridge = 1 - distanceFromRidge / wave.crestWidth;
+      const decay = Math.max(0, 1 - ringIndex / (wave.rings + 1));
+      const direction = ringIndex % 2 === 0 ? 1 : -0.58;
+      const force = ridge * decay;
+
+      lift += force * direction;
+      glow += force;
+    }
+
+    const scale = Math.max(0.72, Math.min(1.72, 1 + lift * 0.52));
+    return {
+      scale,
+      yOffset: -lift * 2.2,
+      glow: Math.min(1, glow),
+    };
+  }
+
+  function drawGlyph(text, x, y, scale = 1) {
+    if (Math.abs(scale - 1) < 0.01) {
+      ctx.fillText(text, x, y);
+      return;
+    }
+
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.scale(scale, scale);
+    ctx.fillText(text, 0, 0);
+    ctx.restore();
   }
 
   function easeInOutCubic(t) {
@@ -464,19 +533,23 @@
       for (let col = 0; col < state.cols; col++) {
         const idx = row * state.cols + col;
         const bit = state.completed ? 1 : state.bits[idx];
+        const cellX = col * state.cellW + state.cellW / 2;
+        const cellY = y;
+        const ripple = getRippleEffect(cellX, cellY);
 
         const waveOffset = reducedMotion ? 0 : Math.sin(t * 1.7 + col * 0.45 + row * 0.22) * 1;
-        const alpha = bit ? 0.86 : 0.46;
+        const alpha = Math.min(1, (bit ? 0.86 : 0.46) + ripple.glow * 0.18);
 
         const embeddedCell = getEmbeddedCell(col, row, idx);
 
         if (embeddedCell) {
           if (embeddedCell.type === "char") {
             ctx.fillStyle = `rgba(132, 255, 164, ${embeddedCell.alpha})`;
-            ctx.fillText(
+            drawGlyph(
               embeddedCell.char,
-              col * state.cellW + state.cellW / 2 + waveOffset,
-              y
+              cellX + waveOffset,
+              cellY + ripple.yOffset,
+              ripple.scale
             );
           }
 
@@ -538,10 +611,11 @@
             ? "rgba(132, 255, 164, 0.72)"
             : `rgba(132, 255, 164, ${alpha})`;
 
-          ctx.fillText(
+          drawGlyph(
             border ? "0" : "1",
-            col * state.cellW + state.cellW / 2 + waveOffset,
-            y
+            cellX + waveOffset,
+            cellY + ripple.yOffset,
+            ripple.scale
           );
           continue;
         }
@@ -550,7 +624,7 @@
           ? `rgba(132, 255, 164, ${alpha})`
           : `rgba(216, 255, 226, ${alpha * 0.7})`;
 
-        ctx.fillText(String(bit), col * state.cellW + state.cellW / 2 + waveOffset, y);
+        drawGlyph(String(bit), cellX + waveOffset, cellY + ripple.yOffset, ripple.scale);
       }
     }
 
