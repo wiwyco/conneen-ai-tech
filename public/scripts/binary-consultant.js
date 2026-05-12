@@ -1,0 +1,753 @@
+const page = document.getElementById("page");
+  const canvas = document.getElementById("binary-canvas");
+  const ctx = canvas.getContext("2d", { alpha: true });
+  const chatShell = document.getElementById("chat-shell");
+  const chatLog = document.getElementById("chat-log");
+  const chatForm = document.getElementById("chat-form");
+  const chatInput = document.getElementById("chat-input");
+  const sendButton = document.getElementById("send-button");
+  const goSiteHotspot = document.getElementById("go-site-hotspot");
+  const siteShell = document.getElementById("site-shell");
+  const logoTransition = document.getElementById("logo-transition");
+  const returnChatButton = document.getElementById("return-chat-button");
+
+  const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  const state = {
+    dpr: 1,
+    width: 0,
+    height: 0,
+    cellW: 14,
+    cellH: 18,
+    cols: 0,
+    rows: 0,
+    bits: new Uint8Array(0),
+    settled: new Uint8Array(0),
+    settleNoise: new Float32Array(0),
+    erased: new Uint8Array(0),
+    eraseNoise: new Float32Array(0),
+    waves: [],
+    siteWaves: [],
+    started: false,
+    completed: false,
+    mode: "intro",
+    siteStartedAt: 0,
+    borderRevealStartedAt: 0,
+    borderRevealDuration: 2400,
+    chatOffsetX: 8,
+    chatOffsetY: -12,
+    goSiteVisible: false,
+    goSiteBox: null,
+  };
+
+  function resize() {
+    state.dpr = Math.min(window.devicePixelRatio || 1, 1.5);
+    state.width = window.innerWidth;
+    state.height = window.innerHeight;
+    canvas.width = Math.floor(state.width * state.dpr);
+    canvas.height = Math.floor(state.height * state.dpr);
+    canvas.style.width = `${state.width}px`;
+    canvas.style.height = `${state.height}px`;
+    ctx.setTransform(state.dpr, 0, 0, state.dpr, 0, 0);
+
+    const nextCols = Math.ceil(state.width / state.cellW) + 2;
+    const nextRows = Math.ceil(state.height / state.cellH) + 2;
+    const changed = nextCols !== state.cols || nextRows !== state.rows;
+
+    state.cols = nextCols;
+    state.rows = nextRows;
+
+    if (changed) {
+      const count = state.cols * state.rows;
+      state.bits = new Uint8Array(count);
+      state.settled = new Uint8Array(count);
+      state.erased = new Uint8Array(count);
+      state.settleNoise = new Float32Array(count);
+      state.eraseNoise = new Float32Array(count);
+
+      for (let i = 0; i < count; i++) {
+        state.bits[i] = Math.random() > 0.5 ? 1 : 0;
+        state.settleNoise[i] = Math.random();
+        state.eraseNoise[i] = Math.random();
+      }
+
+      if (state.mode === "intro") {
+        state.completed = false;
+        state.borderRevealStartedAt = 0;
+        state.goSiteVisible = false;
+        chatShell.classList.remove("visible");
+        hideGoSiteHotspot();
+      } else if (state.mode === "chat") {
+        state.bits.fill(1);
+        state.settled.fill(1);
+        state.erased.fill(0);
+        positionGoSiteHotspot();
+      } else if (state.mode === "site") {
+        state.bits.fill(1);
+        state.settled.fill(1);
+        state.erased.fill(1);
+      }
+    }
+
+    positionGoSiteHotspot();
+  }
+
+  function addWave(x, y) {
+    if (state.completed || state.mode !== "intro") return;
+    state.started = true;
+    state.waves.push({
+      x,
+      y,
+      radius: 0,
+      speed: reducedMotion ? 36 : 7.8,
+
+      // Three visible ripple ridges, like a droplet impact from above:
+      // the leading ridge is largest, the next is smaller, the third is smallest.
+      spacing: 62,
+      crestWidths: [34, 24, 16],
+      crestScales: [1.95, 1.38, 1.08],
+      wakeFill: 210,
+      rings: 3,
+    });
+
+    // Keep the active wave list small.
+    if (state.waves.length > 8) state.waves.shift();
+  }
+
+  function addSiteWave(x, y) {
+    state.siteWaves.push({
+      x,
+      y,
+      radius: 0,
+      speed: reducedMotion ? 44 : 9.2,
+      spacing: 72,
+      crestWidths: [42, 30, 20],
+      crestScales: [2.0, 1.42, 1.12],
+      wakeFill: 260,
+      rings: 3,
+    });
+
+    if (state.siteWaves.length > 4) state.siteWaves.shift();
+  }
+
+  function pointerPosition(event) {
+    const touch = event.touches?.[0] || event.changedTouches?.[0];
+    return {
+      x: touch ? touch.clientX : event.clientX,
+      y: touch ? touch.clientY : event.clientY,
+    };
+  }
+
+  function handlePointer(event) {
+    if (state.mode !== "intro") return;
+    const p = pointerPosition(event);
+    addWave(p.x, p.y);
+  }
+
+  function completeIntro() {
+    if (state.completed) return;
+
+    state.completed = true;
+    state.mode = "chat";
+    state.bits.fill(1);
+    state.settled.fill(1);
+    state.borderRevealStartedAt = performance.now();
+
+    setTimeout(() => {
+      chatShell.classList.add("visible");
+      chatShell.classList.remove("site-exit");
+      chatInput.focus();
+      showGoSiteHotspot();
+    }, state.borderRevealDuration + 250);
+  }
+
+  function showGoSiteHotspot() {
+    state.goSiteVisible = true;
+    positionGoSiteHotspot();
+    goSiteHotspot.classList.add("visible");
+  }
+
+  function hideGoSiteHotspot() {
+    state.goSiteVisible = false;
+    goSiteHotspot.classList.remove("visible");
+  }
+
+  function getGoSiteZone() {
+    const text = "GO TO SITE";
+    return {
+      name: "goSite",
+      lines: [text],
+      startCol: Math.max(4, state.cols - text.length - 8),
+      startRow: 3,
+      padX: 2,
+      padY: 1,
+      alpha: 0.9,
+      persistent: true,
+      clickable: true,
+    };
+  }
+
+  function positionGoSiteHotspot() {
+    if (!state.goSiteVisible || !state.goSiteBox) return;
+
+    goSiteHotspot.style.left = `${state.goSiteBox.left}px`;
+    goSiteHotspot.style.top = `${state.goSiteBox.top}px`;
+    goSiteHotspot.style.width = `${state.goSiteBox.width}px`;
+    goSiteHotspot.style.height = `${state.goSiteBox.height}px`;
+  }
+
+  function beginSiteTransition() {
+    if (state.mode !== "chat") return;
+
+    const box = state.goSiteBox;
+    const x = box ? box.left + box.width / 2 : state.width - 140;
+    const y = box ? box.top + box.height / 2 : 72;
+
+    hideGoSiteHotspot();
+    state.mode = "siteTransition";
+    state.siteStartedAt = performance.now();
+    state.siteWaves = [];
+    state.erased.fill(0);
+
+    page.classList.add("site-transitioning");
+    chatShell.classList.add("site-exit");
+    chatShell.classList.remove("visible");
+
+    addSiteWave(x, y);
+
+    setTimeout(() => {
+      logoTransition.classList.add("visible");
+    }, reducedMotion ? 0 : 620);
+
+    setTimeout(() => {
+      logoTransition.classList.add("fly-home");
+    }, reducedMotion ? 80 : 1700);
+
+    setTimeout(() => {
+      state.mode = "site";
+      state.erased.fill(1);
+      page.classList.add("site-mode");
+      page.classList.remove("site-transitioning", "returning-to-chat");
+      siteShell.classList.add("visible");
+      siteShell.classList.remove("fading-out");
+      logoTransition.classList.remove("visible", "fly-home");
+    }, reducedMotion ? 220 : 2850);
+  }
+
+  function returnToChat() {
+    if (state.mode !== "site") return;
+
+    state.mode = "chat";
+    state.completed = true;
+    state.bits.fill(1);
+    state.settled.fill(1);
+    state.erased.fill(0);
+    state.borderRevealStartedAt = performance.now();
+
+    page.classList.add("returning-to-chat");
+    page.classList.remove("site-mode");
+    siteShell.classList.add("fading-out");
+    siteShell.classList.remove("visible");
+
+    logoTransition.classList.add("visible", "fly-home");
+
+    setTimeout(() => {
+      logoTransition.classList.remove("fly-home");
+    }, reducedMotion ? 0 : 150);
+
+    setTimeout(() => {
+      logoTransition.classList.remove("visible");
+      chatShell.classList.remove("site-exit");
+      chatShell.classList.add("visible");
+      page.classList.remove("returning-to-chat");
+      siteShell.classList.remove("fading-out");
+      showGoSiteHotspot();
+      chatInput.focus();
+    }, reducedMotion ? 180 : 1200);
+  }
+
+  function updateWaves() {
+    if (!state.waves.length) return;
+
+    let settledCount = 0;
+
+    for (const wave of state.waves) {
+      wave.radius += wave.speed;
+    }
+
+    const maxRadius = Math.hypot(state.width, state.height) + 260;
+    state.waves = state.waves.filter((wave) => wave.radius < maxRadius);
+
+    for (let row = 0; row < state.rows; row++) {
+      const y = row * state.cellH + state.cellH * 0.5;
+
+      for (let col = 0; col < state.cols; col++) {
+        const x = col * state.cellW + state.cellW * 0.5;
+        const idx = row * state.cols + col;
+
+        if (!state.settled[idx]) {
+          for (const wave of state.waves) {
+            const dist = Math.hypot(x - wave.x, y - wave.y);
+            const phase = wave.radius - dist;
+
+            // phase < 0 means the first ripple ridge has not reached this cell yet.
+            if (phase < 0) continue;
+
+            let shouldSettle = false;
+
+            for (let ring = 0; ring < wave.rings; ring++) {
+              const ringPhase = phase - ring * wave.spacing;
+              const crestWidth = wave.crestWidths[ring] || wave.crestWidths[wave.crestWidths.length - 1];
+
+              if (ringPhase < -crestWidth || ringPhase > crestWidth) continue;
+
+              const ridgePressure = 1 - Math.abs(ringPhase) / crestWidth;
+              const ringBias = 0.18 + ring * 0.08;
+
+              if (ridgePressure + ringBias > state.settleNoise[idx]) {
+                shouldSettle = true;
+                break;
+              }
+            }
+
+            // The wake fills remaining holes only after the visible ripples have
+            // physically passed this cell. This prevents far corners from snapping early.
+            if (!shouldSettle && phase > wave.wakeFill) {
+              shouldSettle = true;
+            }
+
+            if (shouldSettle) {
+              state.bits[idx] = 1;
+              state.settled[idx] = 1;
+              break;
+            }
+          }
+        }
+
+        settledCount += state.settled[idx];
+      }
+    }
+
+    // Do not complete at 98.5%. That caused the far corners to snap to 1s before
+    // the ripple/wake reached them.
+    if (state.started && settledCount === state.settled.length) {
+      completeIntro();
+    }
+  }
+
+  function updateSiteWaves() {
+    if (state.mode !== "siteTransition" || !state.siteWaves.length) return;
+
+    for (const wave of state.siteWaves) {
+      wave.radius += wave.speed;
+    }
+
+    const elapsed = performance.now() - state.siteStartedAt;
+
+    if (!reducedMotion && state.siteWaves.length === 1 && elapsed > 340) {
+      const source = state.siteWaves[0];
+      addSiteWave(source.x, source.y);
+    }
+
+    for (let row = 0; row < state.rows; row++) {
+      const y = row * state.cellH + state.cellH * 0.5;
+
+      for (let col = 0; col < state.cols; col++) {
+        const x = col * state.cellW + state.cellW * 0.5;
+        const idx = row * state.cols + col;
+
+        if (state.erased[idx]) continue;
+
+        for (const wave of state.siteWaves) {
+          const dist = Math.hypot(x - wave.x, y - wave.y);
+          const phase = wave.radius - dist;
+
+          if (phase < 0) continue;
+
+          let shouldErase = false;
+
+          for (let ring = 0; ring < wave.rings; ring++) {
+            const ringPhase = phase - ring * wave.spacing;
+            const crestWidth = wave.crestWidths[ring] || wave.crestWidths[wave.crestWidths.length - 1];
+
+            if (ringPhase < -crestWidth || ringPhase > crestWidth) continue;
+
+            const ridgePressure = 1 - Math.abs(ringPhase) / crestWidth;
+            const ringBias = 0.24 + ring * 0.1;
+
+            if (ridgePressure + ringBias > state.eraseNoise[idx]) {
+              shouldErase = true;
+              break;
+            }
+          }
+
+          if (!shouldErase && phase > wave.wakeFill) {
+            shouldErase = true;
+          }
+
+          if (shouldErase) {
+            state.erased[idx] = 1;
+            break;
+          }
+        }
+      }
+    }
+  }
+
+  function getRippleEffect(x, y) {
+    if (reducedMotion) {
+      return { scale: 1, yOffset: 0, glow: 0 };
+    }
+
+    const activeWaves = state.mode === "siteTransition" ? state.siteWaves : state.waves;
+
+    if (!activeWaves.length || state.mode === "site") {
+      return { scale: 1, yOffset: 0, glow: 0 };
+    }
+
+    let scaleBoost = 0;
+    let yOffset = 0;
+    let glow = 0;
+
+    for (const wave of activeWaves) {
+      const dist = Math.hypot(x - wave.x, y - wave.y);
+      const phase = wave.radius - dist;
+
+      if (phase < -wave.crestWidths[0]) continue;
+
+      for (let ring = 0; ring < wave.rings; ring++) {
+        const crestWidth = wave.crestWidths[ring] || wave.crestWidths[wave.crestWidths.length - 1];
+        const crestScale = wave.crestScales[ring] || 1;
+        const ringPhase = phase - ring * wave.spacing;
+
+        if (ringPhase < -crestWidth || ringPhase > crestWidth) continue;
+
+        const ridge = 1 - Math.abs(ringPhase) / crestWidth;
+        const direction = ring % 2 === 0 ? 1 : -0.35;
+        const localScaleBoost = ridge * (crestScale - 1);
+
+        scaleBoost += localScaleBoost * direction;
+        yOffset += ridge * direction * -2.4;
+        glow += ridge * (1 - ring * 0.18);
+      }
+    }
+
+    const scale = Math.max(0.78, Math.min(1.95, 1 + scaleBoost));
+
+    return {
+      scale,
+      yOffset,
+      glow: Math.min(1, glow),
+    };
+  }
+
+  function drawGlyph(text, x, y, scale = 1) {
+    if (Math.abs(scale - 1) < 0.01) {
+      ctx.fillText(text, x, y);
+      return;
+    }
+
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.scale(scale, scale);
+    ctx.fillText(text, 0, 0);
+    ctx.restore();
+  }
+
+  function easeInOutCubic(t) {
+    return t < 0.5
+      ? 4 * t * t * t
+      : 1 - Math.pow(-2 * t + 2, 3) / 2;
+  }
+
+  function getEmbeddedTextZones() {
+    const instructionLines = [
+      "Click or tap the field",
+      "to turn your data",
+      "into actionable insights",
+    ];
+
+    const instructionWidth = Math.max(...instructionLines.map((line) => line.length));
+    const zones = [
+      {
+        name: "brand",
+        lines: ["CONNEEN AI"],
+        startCol: 4,
+        startRow: 3,
+        padX: 2,
+        padY: 1,
+        alpha: 0.9,
+        persistent: true,
+      },
+      {
+        name: "instruction",
+        lines: instructionLines,
+        startCol: Math.max(4, state.cols - instructionWidth - 8),
+        startRow: Math.max(6, state.rows - instructionLines.length - 5),
+        padX: 2,
+        padY: 1,
+        alpha: 0.62,
+        persistent: false,
+      },
+    ];
+
+    if (state.completed && state.mode === "chat") {
+      zones.push(getGoSiteZone());
+    }
+
+    return zones;
+  }
+
+  function getEmbeddedCell(col, row, idx) {
+    const zones = getEmbeddedTextZones();
+
+    for (const zone of zones) {
+      if (state.completed && !zone.persistent) continue;
+
+      // Non-persistent text should be wiped out by the wave.
+      // Once that cell settles, it goes back to normal grid behavior, which becomes a 1.
+      if (!zone.persistent && state.settled[idx]) continue;
+
+      const textW = Math.max(...zone.lines.map((line) => line.length));
+      const textH = zone.lines.length;
+
+      const boxLeft = zone.startCol - zone.padX;
+      const boxRight = zone.startCol + textW + zone.padX - 1;
+      const boxTop = zone.startRow - zone.padY;
+      const boxBottom = zone.startRow + textH + zone.padY - 1;
+
+      if (zone.clickable) {
+        state.goSiteBox = {
+          left: boxLeft * state.cellW,
+          top: boxTop * state.cellH,
+          width: (boxRight - boxLeft + 1) * state.cellW,
+          height: (boxBottom - boxTop + 1) * state.cellH,
+        };
+      }
+
+      const inBox =
+        col >= boxLeft &&
+        col <= boxRight &&
+        row >= boxTop &&
+        row <= boxBottom;
+
+      if (!inBox) continue;
+
+      const textRow = row - zone.startRow;
+      const textCol = col - zone.startCol;
+      const line = zone.lines[textRow];
+
+      if (line && textCol >= 0 && textCol < line.length) {
+        const char = line[textCol];
+
+        if (char !== " ") {
+          return {
+            type: "char",
+            char,
+            alpha: zone.alpha,
+            clickable: Boolean(zone.clickable),
+          };
+        }
+      }
+
+      return {
+        type: "blank",
+        clickable: Boolean(zone.clickable),
+      };
+    }
+
+    return null;
+  }
+
+  function draw() {
+    updateWaves();
+    updateSiteWaves();
+
+    ctx.clearRect(0, 0, state.width, state.height);
+    ctx.font = "14px ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+
+    const t = performance.now() / 1000;
+    state.goSiteBox = null;
+
+    for (let row = 0; row < state.rows; row++) {
+      const y = row * state.cellH;
+
+      for (let col = 0; col < state.cols; col++) {
+        const idx = row * state.cols + col;
+        const bit = state.completed ? 1 : state.bits[idx];
+        const cellX = col * state.cellW + state.cellW / 2;
+        const cellY = y;
+        const ripple = getRippleEffect(cellX, cellY);
+        const isSiteVisual = state.mode === "site" || state.mode === "siteTransition";
+
+        if (isSiteVisual && state.erased[idx]) continue;
+
+        const waveOffset = reducedMotion ? 0 : Math.sin(t * 1.7 + col * 0.45 + row * 0.22) * 1;
+        const baseAlpha = isSiteVisual ? 0.24 : bit ? 0.86 : 0.46;
+        const alpha = Math.min(1, baseAlpha + ripple.glow * 0.18);
+
+        const embeddedCell = getEmbeddedCell(col, row, idx);
+
+        if (embeddedCell && !isSiteVisual) {
+          if (embeddedCell.type === "char") {
+            const buttonBoost = embeddedCell.clickable ? 0.08 : 0;
+            ctx.fillStyle = `rgba(17, 17, 17, ${Math.min(1, embeddedCell.alpha + buttonBoost + ripple.glow * 0.18)})`;
+            drawGlyph(
+              embeddedCell.char,
+              cellX + waveOffset,
+              cellY + ripple.yOffset,
+              ripple.scale
+            );
+          }
+
+          // Blank embedded cells create readable padding around the text.
+          continue;
+        }
+
+        // The chat reveal needs a blank center with 0s as border and 1s outside.
+        // After the wave finishes, the 0 border grows outward from the center instead of snapping in.
+        if (state.completed && state.mode === "chat") {
+          const panelW = Math.min(880, state.width - 56);
+          const panelH = Math.min(640, state.height - 56);
+          const centerX = state.width / 2 + state.chatOffsetX;
+          const centerY = state.height / 2 + state.chatOffsetY;
+
+          const fullLeft = centerX - panelW / 2;
+          const fullRight = centerX + panelW / 2;
+          const fullTop = centerY - panelH / 2;
+          const fullBottom = centerY + panelH / 2;
+
+          const elapsed = performance.now() - state.borderRevealStartedAt;
+          const rawProgress = Math.min(1, elapsed / state.borderRevealDuration);
+          const progress = easeInOutCubic(rawProgress);
+
+          const revealW = panelW * progress;
+          const revealH = panelH * progress;
+
+          const left = centerX - revealW / 2;
+          const right = centerX + revealW / 2;
+          const top = centerY - revealH / 2;
+          const bottom = centerY + revealH / 2;
+
+          const cx = col * state.cellW + state.cellW / 2;
+          const cy = row * state.cellH + state.cellH / 2;
+          const borderPad = 18;
+
+          const insideRevealedPanel =
+            cx > left &&
+            cx < right &&
+            cy > top &&
+            cy < bottom;
+
+          const border =
+            cx > left - borderPad &&
+            cx < right + borderPad &&
+            cy > top - borderPad &&
+            cy < bottom + borderPad &&
+            !insideRevealedPanel;
+
+          if (insideRevealedPanel) continue;
+
+          ctx.fillStyle = border
+            ? "rgba(17, 17, 17, 0.72)"
+            : `rgba(17, 17, 17, ${alpha})`;
+
+          drawGlyph(
+            border ? "0" : "1",
+            cellX + waveOffset,
+            cellY + ripple.yOffset,
+            ripple.scale
+          );
+          continue;
+        }
+
+        if (isSiteVisual) {
+          ctx.fillStyle = `rgba(17, 17, 17, ${alpha})`;
+          drawGlyph("1", cellX + waveOffset, cellY + ripple.yOffset, ripple.scale);
+          continue;
+        }
+
+        ctx.fillStyle = bit
+          ? `rgba(17, 17, 17, ${alpha})`
+          : `rgba(95, 95, 95, ${alpha * 0.72})`;
+
+        drawGlyph(String(bit), cellX + waveOffset, cellY + ripple.yOffset, ripple.scale);
+      }
+    }
+
+    positionGoSiteHotspot();
+    requestAnimationFrame(draw);
+  }
+
+  function addMessage(role, text) {
+    const div = document.createElement("div");
+    div.className = `message ${role}`;
+    div.textContent = text;
+    chatLog.appendChild(div);
+    chatLog.scrollTop = chatLog.scrollHeight;
+  }
+
+  function getMessagesForApi() {
+    return Array.from(chatLog.querySelectorAll(".message")).map((el) => ({
+      role: el.classList.contains("user") ? "user" : "assistant",
+      content: el.textContent || "",
+    }));
+  }
+
+  chatForm.addEventListener("submit", async (event) => {
+    event.preventDefault();
+
+    const text = chatInput.value.trim();
+    if (!text) return;
+
+    addMessage("user", text);
+    chatInput.value = "";
+    sendButton.disabled = true;
+    sendButton.textContent = "Thinking";
+
+    try {
+      const res = await fetch("/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ messages: getMessagesForApi() }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Request failed.");
+
+      addMessage("assistant", data.reply || "I had trouble generating a response.");
+    } catch (error) {
+      addMessage(
+        "assistant",
+        "I could not reach the consultation service. Check the server logs and confirm OPENAI_API_KEY is configured."
+      );
+    } finally {
+      sendButton.disabled = false;
+      sendButton.textContent = "Send";
+      chatInput.focus();
+    }
+  });
+
+  chatInput.addEventListener("keydown", (event) => {
+    if (event.key === "Enter" && !event.shiftKey) {
+      event.preventDefault();
+      chatForm.requestSubmit();
+    }
+  });
+
+  goSiteHotspot.addEventListener("click", beginSiteTransition);
+  returnChatButton.addEventListener("click", returnToChat);
+
+  window.addEventListener("resize", resize);
+  window.addEventListener("click", handlePointer, { passive: true });
+  window.addEventListener("touchstart", handlePointer, { passive: true });
+
+  resize();
+
+  if (reducedMotion) {
+    setTimeout(() => completeIntro(), 700);
+  }
+
+  draw();

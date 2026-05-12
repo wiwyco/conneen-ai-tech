@@ -1,0 +1,781 @@
+:global(*) {
+    box-sizing: border-box;
+  }
+
+  :global(html),
+  :global(body) {
+    margin: 0;
+    width: 100%;
+    min-height: 100%;
+    background: #f7f7f4;
+    color: #111111;
+    font-family:
+      ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono",
+      "Courier New", monospace;
+  }
+
+  :global(body) {
+    overflow-x: hidden;
+  }
+
+  .page {
+    position: relative;
+    min-height: 100vh;
+    overflow: hidden;
+    background:
+      radial-gradient(circle at 30% 20%, rgba(0, 0, 0, 0.045), transparent 32rem),
+      radial-gradient(circle at 70% 80%, rgba(0, 0, 0, 0.035), transparent 34rem),
+      #f7f7f4;
+  }
+
+  #binary-canvas {
+    position: fixed;
+    inset: 0;
+    z-index: 1;
+    width: 100vw;
+    height: 100vh;
+    display: block;
+    transition: opacity 1000ms ease;
+  }
+
+  .page.site-mode #binary-canvas,
+  .page.returning-to-chat #binary-canvas {
+    opacity: 0.22;
+  }
+
+  .chat-shell {
+    --chat-offset-x: 8px;
+    --chat-offset-y: -12px;
+
+    position: fixed;
+    inset: 50%;
+    z-index: 4;
+    width: min(840px, calc(100vw - 96px));
+    height: min(600px, calc(100vh - 96px));
+    transform: translate(
+      calc(-50% + var(--chat-offset-x)),
+      calc(-50% + var(--chat-offset-y))
+    ) scale(0.97);
+    opacity: 0;
+    pointer-events: none;
+    transition:
+      opacity 1200ms ease,
+      transform 1200ms ease,
+      filter 1200ms ease;
+  }
+
+  .chat-shell.visible {
+    opacity: 1;
+    transform: translate(
+      calc(-50% + var(--chat-offset-x)),
+      calc(-50% + var(--chat-offset-y))
+    ) scale(1);
+    pointer-events: auto;
+    filter: blur(0);
+  }
+
+  .chat-shell.site-exit {
+    opacity: 0;
+    transform: translate(
+      calc(-50% + var(--chat-offset-x)),
+      calc(-50% + var(--chat-offset-y))
+    ) scale(0.94);
+    pointer-events: none;
+    filter: blur(6px);
+  }
+
+  .chat-panel {
+    height: 100%;
+    display: grid;
+    grid-template-rows: auto 1fr auto;
+    background: rgba(255, 255, 255, 0.9);
+    border: 1px solid rgba(17, 17, 17, 0.5);
+    outline: 6px solid rgba(255, 255, 255, 0.36);
+    box-shadow:
+      0 0 0 1px rgba(17, 17, 17, 0.08) inset,
+      0 0 60px rgba(0, 0, 0, 0.08),
+      0 32px 100px rgba(0, 0, 0, 0.16);
+    backdrop-filter: blur(8px);
+  }
+
+  .chat-header {
+    padding: 18px 20px;
+    border-bottom: 1px solid rgba(17, 17, 17, 0.18);
+  }
+
+  .eyebrow {
+    margin: 0 0 8px;
+    color: rgba(17, 17, 17, 0.68);
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+  }
+
+  h1 {
+    margin: 0;
+    font-family:
+      Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+      sans-serif;
+    color: #111111;
+    font-size: clamp(28px, 4vw, 48px);
+    line-height: 1;
+    letter-spacing: -0.04em;
+  }
+
+  .chat-log {
+    overflow: auto;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    scrollbar-color: rgba(17, 17, 17, 0.35) transparent;
+  }
+
+  .message {
+    max-width: min(680px, 92%);
+    padding: 13px 15px;
+    border: 1px solid rgba(17, 17, 17, 0.18);
+    background: rgba(17, 17, 17, 0.045);
+    color: rgba(17, 17, 17, 0.92);
+    line-height: 1.5;
+    white-space: pre-wrap;
+  }
+
+  .message.user {
+    align-self: flex-end;
+    border-color: rgba(17, 17, 17, 0.32);
+    background: rgba(17, 17, 17, 0.075);
+  }
+
+  .chat-form {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 10px;
+    padding: 12px;
+    border-top: 1px solid rgba(17, 17, 17, 0.18);
+  }
+
+  .chat-form textarea {
+    width: 100%;
+    min-height: 54px;
+    max-height: 180px;
+    resize: vertical;
+    border: 1px solid rgba(17, 17, 17, 0.28);
+    background: rgba(255, 255, 255, 0.78);
+    color: #111111;
+    padding: 14px;
+    font: inherit;
+    outline: none;
+  }
+
+  .chat-form textarea:focus {
+    border-color: rgba(17, 17, 17, 0.72);
+    box-shadow: 0 0 0 3px rgba(17, 17, 17, 0.10);
+  }
+
+  .chat-form button,
+  .site-button,
+  .site-nav-button {
+    border: 1px solid rgba(17, 17, 17, 0.5);
+    background: rgba(255, 255, 255, 0.68);
+    color: #111111;
+    font: inherit;
+    cursor: pointer;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+
+  .chat-form button {
+    padding: 0 18px;
+  }
+
+  .chat-form button:hover,
+  .site-button:hover,
+  .site-nav-button:hover {
+    background: rgba(17, 17, 17, 0.08);
+  }
+
+  .chat-form button:disabled {
+    cursor: wait;
+    opacity: 0.58;
+  }
+
+  .go-site-hotspot {
+    position: fixed;
+    z-index: 5;
+    display: none;
+    border: 0;
+    padding: 0;
+    background: transparent;
+    cursor: pointer;
+    opacity: 0;
+  }
+
+  .go-site-hotspot.visible {
+    display: block;
+    pointer-events: auto;
+  }
+
+  .site-shell {
+    position: relative;
+    z-index: 3;
+    min-height: 100vh;
+    opacity: 0;
+    pointer-events: none;
+    transition:
+      opacity 1000ms ease,
+      filter 1000ms ease;
+    filter: blur(8px);
+  }
+
+  .site-shell.visible {
+    opacity: 1;
+    pointer-events: auto;
+    filter: blur(0);
+  }
+
+  .site-shell.fading-out {
+    opacity: 0;
+    pointer-events: none;
+    filter: blur(8px);
+  }
+
+  .logo-transition {
+    position: fixed;
+    z-index: 6;
+    top: 50%;
+    left: 50%;
+    width: min(560px, calc(100vw - 48px));
+    transform: translate(-50%, -50%) scale(0.92);
+    opacity: 0;
+    pointer-events: none;
+    transition:
+      top 1000ms cubic-bezier(0.2, 0.8, 0.2, 1),
+      left 1000ms cubic-bezier(0.2, 0.8, 0.2, 1),
+      width 1000ms cubic-bezier(0.2, 0.8, 0.2, 1),
+      transform 1000ms cubic-bezier(0.2, 0.8, 0.2, 1),
+      opacity 900ms ease;
+  }
+
+  .logo-transition.visible {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+
+  .logo-transition.fly-home {
+    top: 30px;
+    left: 30px;
+    width: 252px;
+    transform: translate(0, 0) scale(1);
+  }
+
+  .brand-lockup {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    color: #111111;
+    text-decoration: none;
+  }
+
+  .brand-lockup {
+    text-decoration: none;
+  }
+
+  .brand-logo-image {
+    display: block;
+    width: 100%;
+    height: auto;
+    object-fit: contain;
+  }
+
+  .logo-transition .brand-logo-image {
+    width: 100%;
+  }
+
+  .site-brand {
+    display: block;
+    width: min(260px, 48vw);
+    flex: 0 0 auto;
+  }
+
+
+  .brand-brain {
+    width: 82px;
+    height: 82px;
+    position: relative;
+    flex: 0 0 auto;
+    border-left: 7px solid #111111;
+  }
+
+  .brand-brain::before {
+    content: "";
+    position: absolute;
+    inset: 5px 30px 5px -34px;
+    border: 7px solid #111111;
+    border-radius: 46% 40% 48% 46%;
+    box-shadow:
+      -17px 10px 0 -8px #f7f7f4,
+      -17px 10px 0 -2px #111111,
+      -13px -15px 0 -8px #f7f7f4,
+      -13px -15px 0 -2px #111111,
+      0 31px 0 -9px #f7f7f4,
+      0 31px 0 -3px #111111;
+  }
+
+  .brand-brain::after {
+    content: "";
+    position: absolute;
+    top: 7px;
+    left: 11px;
+    width: 72px;
+    height: 68px;
+    background:
+      linear-gradient(#111111, #111111) 0 0 / 7px 68px no-repeat,
+      linear-gradient(135deg, transparent 0 43%, #111111 44% 53%, transparent 54%) 2px 6px / 42px 42px no-repeat,
+      linear-gradient(135deg, transparent 0 43%, #111111 44% 53%, transparent 54%) 2px 36px / 42px 42px no-repeat;
+    border-radius: 4px;
+  }
+
+  .brand-node {
+    position: absolute;
+    right: -8px;
+    width: 21px;
+    height: 21px;
+    border: 6px solid #111111;
+    border-radius: 999px;
+    background: #f7f7f4;
+  }
+
+  .brand-node.one {
+    top: 4px;
+  }
+
+  .brand-node.two {
+    top: 31px;
+  }
+
+  .brand-node.three {
+    top: 59px;
+  }
+
+  .brand-copy strong {
+    display: block;
+    font-family:
+      Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+      sans-serif;
+    font-size: clamp(38px, 8vw, 82px);
+    line-height: 0.88;
+    letter-spacing: -0.07em;
+  }
+
+  .brand-copy span {
+    display: block;
+    margin-top: 14px;
+    font-family:
+      Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+      sans-serif;
+    font-size: clamp(14px, 2.5vw, 26px);
+    font-weight: 700;
+    letter-spacing: 0.27em;
+    text-transform: uppercase;
+  }
+
+  .site-header {
+    position: sticky;
+    top: 0;
+    z-index: 8;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 24px;
+    padding: 22px clamp(20px, 4vw, 56px);
+    background: rgba(247, 247, 244, 0.78);
+    border-bottom: 1px solid rgba(17, 17, 17, 0.12);
+    backdrop-filter: blur(14px);
+  }
+
+  .site-header .brand-lockup {
+    gap: 10px;
+  }
+
+  .site-header .brand-brain {
+    width: 42px;
+    height: 42px;
+    border-left-width: 4px;
+  }
+
+  .site-header .brand-brain::before {
+    inset: 3px 17px 3px -18px;
+    border-width: 4px;
+    box-shadow:
+      -9px 5px 0 -5px #f7f7f4,
+      -9px 5px 0 -1px #111111,
+      -7px -8px 0 -5px #f7f7f4,
+      -7px -8px 0 -1px #111111,
+      0 16px 0 -5px #f7f7f4,
+      0 16px 0 -1px #111111;
+  }
+
+  .site-header .brand-brain::after {
+    top: 4px;
+    left: 6px;
+    width: 38px;
+    height: 34px;
+    background:
+      linear-gradient(#111111, #111111) 0 0 / 4px 34px no-repeat,
+      linear-gradient(135deg, transparent 0 43%, #111111 44% 53%, transparent 54%) 1px 3px / 22px 22px no-repeat,
+      linear-gradient(135deg, transparent 0 43%, #111111 44% 53%, transparent 54%) 1px 18px / 22px 22px no-repeat;
+  }
+
+  .site-header .brand-node {
+    right: -5px;
+    width: 11px;
+    height: 11px;
+    border-width: 3px;
+  }
+
+  .site-header .brand-node.one {
+    top: 3px;
+  }
+
+  .site-header .brand-node.two {
+    top: 17px;
+  }
+
+  .site-header .brand-node.three {
+    top: 31px;
+  }
+
+  .site-header .brand-copy strong {
+    font-size: 24px;
+    letter-spacing: -0.05em;
+  }
+
+  .site-header .brand-copy span {
+    margin-top: 4px;
+    font-size: 9px;
+    letter-spacing: 0.22em;
+  }
+
+  .site-nav {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .site-nav a,
+  .site-nav-button {
+    color: #111111;
+    text-decoration: none;
+    padding: 10px 12px;
+    font-size: 12px;
+    border-radius: 999px;
+  }
+
+  .site-nav a {
+    border: 1px solid transparent;
+  }
+
+  .site-nav a:hover {
+    border-color: rgba(17, 17, 17, 0.18);
+    background: rgba(255, 255, 255, 0.58);
+  }
+
+  .site-nav-button {
+    border-color: rgba(17, 17, 17, 0.42);
+  }
+
+  .site-main {
+    padding: clamp(52px, 8vw, 108px) clamp(20px, 4vw, 56px) 72px;
+  }
+
+  .hero-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1.1fr) minmax(320px, 0.9fr);
+    gap: clamp(28px, 5vw, 76px);
+    align-items: center;
+    max-width: 1180px;
+    margin: 0 auto;
+  }
+
+  .hero-copy h2 {
+    margin: 0;
+    font-family:
+      Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+      sans-serif;
+    font-size: clamp(46px, 8vw, 104px);
+    line-height: 0.9;
+    letter-spacing: -0.075em;
+  }
+
+  .hero-copy p {
+    max-width: 680px;
+    margin: 24px 0 0;
+    color: rgba(17, 17, 17, 0.74);
+    font-family:
+      Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+      sans-serif;
+    font-size: clamp(18px, 2vw, 24px);
+    line-height: 1.45;
+  }
+
+  .hero-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-top: 34px;
+  }
+
+  .site-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 46px;
+    padding: 0 18px;
+    text-decoration: none;
+    border-radius: 999px;
+  }
+
+  .site-button.primary {
+    background: #111111;
+    color: #f7f7f4;
+  }
+
+  .site-button.primary:hover {
+    background: rgba(17, 17, 17, 0.84);
+  }
+
+  .consulting-panel {
+    border: 1px solid rgba(17, 17, 17, 0.22);
+    background: rgba(255, 255, 255, 0.68);
+    box-shadow:
+      0 0 0 1px rgba(255, 255, 255, 0.48) inset,
+      0 28px 90px rgba(0, 0, 0, 0.09);
+    backdrop-filter: blur(10px);
+  }
+
+  .panel-top {
+    padding: 18px;
+    border-bottom: 1px solid rgba(17, 17, 17, 0.14);
+  }
+
+  .panel-label {
+    margin: 0;
+    color: rgba(17, 17, 17, 0.58);
+    font-size: 12px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+  }
+
+  .panel-title {
+    margin: 8px 0 0;
+    font-family:
+      Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+      sans-serif;
+    font-size: 24px;
+    font-weight: 800;
+    letter-spacing: -0.04em;
+  }
+
+  .signal-list {
+    display: grid;
+    gap: 1px;
+    background: rgba(17, 17, 17, 0.12);
+  }
+
+  .signal-item {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 14px;
+    padding: 16px 18px;
+    background: rgba(247, 247, 244, 0.82);
+  }
+
+  .signal-num {
+    color: rgba(17, 17, 17, 0.5);
+  }
+
+  .signal-item strong {
+    display: block;
+    font-family:
+      Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+      sans-serif;
+    margin-bottom: 4px;
+  }
+
+  .signal-item span {
+    color: rgba(17, 17, 17, 0.68);
+    line-height: 1.45;
+  }
+
+  .section {
+    max-width: 1180px;
+    margin: 0 auto;
+    padding: 74px 0 0;
+  }
+
+  .section-kicker {
+    margin: 0 0 12px;
+    color: rgba(17, 17, 17, 0.58);
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    font-size: 12px;
+  }
+
+  .section h3 {
+    margin: 0;
+    font-family:
+      Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+      sans-serif;
+    font-size: clamp(32px, 5vw, 62px);
+    line-height: 0.98;
+    letter-spacing: -0.06em;
+  }
+
+  .section > p {
+    max-width: 760px;
+    margin: 18px 0 0;
+    color: rgba(17, 17, 17, 0.72);
+    font-family:
+      Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+      sans-serif;
+    font-size: 18px;
+    line-height: 1.55;
+  }
+
+  .cards {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 14px;
+    margin-top: 28px;
+  }
+
+  .card {
+    min-height: 188px;
+    padding: 22px;
+    border: 1px solid rgba(17, 17, 17, 0.18);
+    background: rgba(255, 255, 255, 0.62);
+    box-shadow: 0 22px 70px rgba(0, 0, 0, 0.055);
+  }
+
+  .card strong {
+    display: block;
+    font-family:
+      Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+      sans-serif;
+    font-size: 20px;
+    letter-spacing: -0.035em;
+    margin-bottom: 12px;
+  }
+
+  .card p {
+    margin: 0;
+    color: rgba(17, 17, 17, 0.68);
+    line-height: 1.55;
+  }
+
+  .contact-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(300px, 0.8fr);
+    gap: 18px;
+    margin-top: 28px;
+  }
+
+  .contact-card {
+    padding: 24px;
+    border: 1px solid rgba(17, 17, 17, 0.18);
+    background: rgba(255, 255, 255, 0.62);
+  }
+
+  .contact-card a {
+    color: #111111;
+  }
+
+  .contact-row {
+    display: grid;
+    grid-template-columns: 120px 1fr;
+    gap: 14px;
+    padding: 13px 0;
+    border-bottom: 1px solid rgba(17, 17, 17, 0.12);
+  }
+
+  .contact-row:last-child {
+    border-bottom: 0;
+  }
+
+  .contact-row span:first-child {
+    color: rgba(17, 17, 17, 0.55);
+  }
+
+  .hours-grid {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 8px 18px;
+    margin-top: 16px;
+    color: rgba(17, 17, 17, 0.72);
+  }
+
+  @media (max-width: 860px) {
+    .site-header {
+      align-items: flex-start;
+      flex-direction: column;
+    }
+
+    .site-nav {
+      width: 100%;
+      overflow-x: auto;
+      padding-bottom: 4px;
+    }
+
+    .hero-grid,
+    .contact-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .cards {
+      grid-template-columns: 1fr;
+    }
+
+    .logo-transition.fly-home {
+      top: 22px;
+      left: 22px;
+      width: 220px;
+    }
+  }
+
+  @media (max-width: 620px) {
+    .site-brand {
+      width: min(220px, 68vw);
+    }
+
+    .chat-shell {
+      width: min(100vw - 34px, 840px);
+      height: min(100vh - 52px, 600px);
+    }
+
+    .chat-form {
+      grid-template-columns: 1fr;
+    }
+
+    .chat-form button {
+      min-height: 46px;
+    }
+
+    .brand-brain {
+      width: 58px;
+      height: 58px;
+    }
+
+    .brand-copy strong {
+      font-size: 40px;
+    }
+
+    .brand-copy span {
+      font-size: 13px;
+    }
+
+    .contact-row {
+      grid-template-columns: 1fr;
+      gap: 4px;
+    }
+  }
