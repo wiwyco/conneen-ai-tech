@@ -272,6 +272,8 @@
     waves: [],
     started: false,
     completed: false,
+    borderRevealStartedAt: 0,
+    borderRevealDuration: 1400,
   };
 
   function resize() {
@@ -299,6 +301,7 @@
         state.bits[i] = Math.random() > 0.5 ? 1 : 0;
       }
       state.completed = false;
+      state.borderRevealStartedAt = 0;
       chatShell.classList.remove("visible");
     }
   }
@@ -333,13 +336,15 @@
 
   function completeIntro() {
     if (state.completed) return;
+
     state.completed = true;
     state.bits.fill(1);
+    state.borderRevealStartedAt = performance.now();
 
     setTimeout(() => {
       chatShell.classList.add("visible");
       chatInput.focus();
-    }, 450);
+    }, state.borderRevealDuration + 250);
   }
 
   function updateWaves() {
@@ -381,6 +386,10 @@
     }
   }
 
+  function easeOutCubic(t) {
+    return 1 - Math.pow(1 - t, 3);
+  }
+
   function draw() {
     updateWaves();
 
@@ -402,28 +411,59 @@
         const alpha = bit ? 0.86 : 0.46;
 
         // The chat reveal needs a blank center with 0s as border and 1s outside.
+        // After the wave finishes, the 0 border grows outward from the center instead of snapping in.
         if (state.completed) {
           const panelW = Math.min(920, state.width - 28);
           const panelH = Math.min(680, state.height - 28);
-          const left = (state.width - panelW) / 2;
-          const right = left + panelW;
-          const top = (state.height - panelH) / 2;
-          const bottom = top + panelH;
+          const fullLeft = (state.width - panelW) / 2;
+          const fullRight = fullLeft + panelW;
+          const fullTop = (state.height - panelH) / 2;
+          const fullBottom = fullTop + panelH;
+
+          const centerX = state.width / 2;
+          const centerY = state.height / 2;
+
+          const elapsed = performance.now() - state.borderRevealStartedAt;
+          const rawProgress = Math.min(1, elapsed / state.borderRevealDuration);
+          const progress = easeOutCubic(rawProgress);
+
+          const revealW = panelW * progress;
+          const revealH = panelH * progress;
+
+          const left = centerX - revealW / 2;
+          const right = centerX + revealW / 2;
+          const top = centerY - revealH / 2;
+          const bottom = centerY + revealH / 2;
+
           const cx = col * state.cellW + state.cellW / 2;
           const cy = row * state.cellH + state.cellH / 2;
           const borderPad = 14;
-          const inside = cx > left && cx < right && cy > top && cy < bottom;
+
+          const insideFullPanel =
+            cx > fullLeft &&
+            cx < fullRight &&
+            cy > fullTop &&
+            cy < fullBottom;
+
+          const insideRevealedPanel =
+            cx > left &&
+            cx < right &&
+            cy > top &&
+            cy < bottom;
+
           const border =
             cx > left - borderPad &&
             cx < right + borderPad &&
             cy > top - borderPad &&
             cy < bottom + borderPad &&
-            !inside;
+            !insideRevealedPanel;
 
-          if (inside) continue;
+          if (insideRevealedPanel) continue;
+
           ctx.fillStyle = border
             ? "rgba(132, 255, 164, 0.72)"
             : `rgba(132, 255, 164, ${alpha})`;
+
           ctx.fillText(border ? "0" : "1", col * state.cellW + waveOffset, y);
           continue;
         }
