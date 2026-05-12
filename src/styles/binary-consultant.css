@@ -1,27 +1,30 @@
-:global(*) {
-    box-sizing: border-box;
-  }
+* {
+  box-sizing: border-box;
+}
 
-  :global(html),
-  :global(body) {
-    margin: 0;
-    width: 100%;
-    min-height: 100%;
-    background: #f7f7f4;
-    color: #111111;
-    font-family:
-      ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono",
-      "Courier New", monospace;
-  }
+html,
+body {
+  margin: 0;
+  width: 100%;
+  min-height: 100%;
+  background: #f7f7f4;
+  color: #111111;
+  font-family:
+    ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono",
+    "Courier New", monospace;
+}
 
-  :global(body) {
-    overflow-x: hidden;
-  }
+body {
+  overflow-x: hidden;
+}
 
   .page {
     position: relative;
     min-height: 100vh;
     overflow: hidden;
+    font-family:
+      ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono",
+      "Courier New", monospace;
     background:
       radial-gradient(circle at 30% 20%, rgba(0, 0, 0, 0.045), transparent 32rem),
       radial-gradient(circle at 70% 80%, rgba(0, 0, 0, 0.035), transparent 34rem),
