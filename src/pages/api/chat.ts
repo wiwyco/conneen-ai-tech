@@ -12,6 +12,10 @@ type ClientMessage = {
 const MAX_MESSAGES = 12;
 const MAX_MESSAGE_CHARS = 1800;
 
+function getEnv(name: "OPENAI_API_KEY" | "OPENAI_MODEL"): string | undefined {
+  return import.meta.env[name] || process.env[name];
+}
+
 function cleanMessages(value: unknown): ClientMessage[] {
   if (!Array.isArray(value)) return [];
 
@@ -45,7 +49,7 @@ function getSafeErrorMessage(err: unknown): string {
 
 export const POST: APIRoute = async ({ request }) => {
   try {
-    const apiKey = import.meta.env.OPENAI_API_KEY;
+    const apiKey = getEnv("OPENAI_API_KEY");
     if (!apiKey) {
       return new Response(
         JSON.stringify({ error: "Server is missing OPENAI_API_KEY." }),
@@ -64,7 +68,7 @@ export const POST: APIRoute = async ({ request }) => {
     }
 
     const client = new OpenAI({ apiKey });
-    const model = import.meta.env.OPENAI_MODEL || "gpt-5-mini";
+    const model = getEnv("OPENAI_MODEL") || "gpt-5-mini";
 
     const response = await client.responses.create({
       model,
