@@ -14,6 +14,19 @@
       </div>
     </div>
 
+    <form class="lead-capture" id="lead-capture-form" hidden>
+      <div>
+        <p class="lead-capture-title">Send this diagnostic to Conneen AI</p>
+        <p class="lead-capture-copy">Share your contact details and the workflow transcript will be saved as a consultation brief.</p>
+      </div>
+      <div class="lead-fields">
+        <input id="lead-name" name="name" type="text" placeholder="Name" autocomplete="name" />
+        <input id="lead-email" name="email" type="email" placeholder="Email" autocomplete="email" required />
+        <input id="lead-company" name="company" type="text" placeholder="Company" autocomplete="organization" />
+        <button id="lead-submit-button" type="submit">Send brief</button>
+      </div>
+    </form>
+
     <form class="chat-form" id="chat-form">
       <textarea
         id="chat-input"

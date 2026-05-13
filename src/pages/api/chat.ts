@@ -96,7 +96,7 @@ Rules:
 - Emphasize human review for high-impact decisions.
 - Do not claim a project is guaranteed.
 - Do not provide legal, medical, financial, or cybersecurity-sensitive advice.
-- When the user seems qualified, invite them to schedule a consultation or email wiwyco@gmail.com.
+- When the user seems qualified, offer to send the diagnostic brief to Conneen AI for follow-up, or invite them to email wiwyco@gmail.com.
 `,
       input: messages.map((m) => ({
         role: m.role,

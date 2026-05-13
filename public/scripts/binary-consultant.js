@@ -6,6 +6,8 @@ const page = document.getElementById("page");
   const chatForm = document.getElementById("chat-form");
   const chatInput = document.getElementById("chat-input");
   const sendButton = document.getElementById("send-button");
+  const leadCaptureForm = document.getElementById("lead-capture-form");
+  const leadSubmitButton = document.getElementById("lead-submit-button");
   const goSiteHotspot = document.getElementById("go-site-hotspot");
   const siteShell = document.getElementById("site-shell");
   const logoTransition = document.getElementById("logo-transition");
@@ -759,6 +761,14 @@ const page = document.getElementById("page");
     }));
   }
 
+  function maybeShowLeadCapture() {
+    const userMessageCount = chatLog.querySelectorAll(".message.user").length;
+
+    if (userMessageCount >= 2 && leadCaptureForm.hidden) {
+      leadCaptureForm.hidden = false;
+    }
+  }
+
   chatForm.addEventListener("submit", async (event) => {
     event.preventDefault();
 
@@ -781,6 +791,7 @@ const page = document.getElementById("page");
       if (!res.ok) throw new Error(data.error || "Request failed.");
 
       addMessage("assistant", data.reply || "I had trouble generating a response.");
+      maybeShowLeadCapture();
     } catch (error) {
       addMessage(
         "assistant",
@@ -791,6 +802,52 @@ const page = document.getElementById("page");
     } finally {
       sendButton.disabled = false;
       sendButton.textContent = "Analyze";
+      chatInput.focus();
+    }
+  });
+
+  leadCaptureForm.addEventListener("submit", async (event) => {
+    event.preventDefault();
+
+    const formData = new FormData(leadCaptureForm);
+    const payload = {
+      name: String(formData.get("name") || ""),
+      email: String(formData.get("email") || ""),
+      company: String(formData.get("company") || ""),
+      pagePath: window.location.pathname,
+      messages: getMessagesForApi(),
+    };
+
+    leadSubmitButton.disabled = true;
+    leadSubmitButton.textContent = "Sending";
+
+    try {
+      const res = await fetch("/api/leads", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Lead capture failed.");
+
+      addMessage(
+        "assistant",
+        data.emailSent
+          ? "Your diagnostic brief was saved and sent to Conneen AI. I'll follow up from wiwyco@gmail.com."
+          : "Your diagnostic brief was saved. Email notification could not be sent, but the lead is stored for follow-up."
+      );
+      leadCaptureForm.hidden = true;
+    } catch (error) {
+      addMessage(
+        "assistant",
+        error instanceof Error
+          ? error.message
+          : "I could not save the diagnostic brief. Please email wiwyco@gmail.com directly."
+      );
+    } finally {
+      leadSubmitButton.disabled = false;
+      leadSubmitButton.textContent = "Send brief";
       chatInput.focus();
     }
   });

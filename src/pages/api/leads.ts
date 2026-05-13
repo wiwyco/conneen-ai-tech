@@ -1,0 +1,238 @@
+import type { APIRoute } from "astro";
+
+export const prerender = false;
+
+type ClientMessage = {
+  role: "user" | "assistant";
+  content: string;
+};
+
+type LeadRequest = {
+  name?: unknown;
+  email?: unknown;
+  company?: unknown;
+  phone?: unknown;
+  messages?: unknown;
+  pagePath?: unknown;
+};
+
+const MAX_MESSAGES = 18;
+const MAX_MESSAGE_CHARS = 2200;
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+function getEnv(name: string): string | undefined {
+  return import.meta.env[name] || process.env[name];
+}
+
+function cleanText(value: unknown, max = 400): string | null {
+  if (typeof value !== "string") return null;
+
+  const text = value.trim().slice(0, max);
+  return text || null;
+}
+
+function cleanMessages(value: unknown): ClientMessage[] {
+  if (!Array.isArray(value)) return [];
+
+  return value
+    .filter((m): m is ClientMessage => {
+      return (
+        m &&
+        typeof m === "object" &&
+        ((m as any).role === "user" || (m as any).role === "assistant") &&
+        typeof (m as any).content === "string"
+      );
+    })
+    .slice(-MAX_MESSAGES)
+    .map((m) => ({
+      role: m.role,
+      content: m.content.trim().slice(0, MAX_MESSAGE_CHARS),
+    }))
+    .filter((m) => m.content);
+}
+
+function classifyWorkflow(messages: ClientMessage[]): string {
+  const text = messages.map((m) => m.content).join(" ").toLowerCase();
+  const categories = [
+    ["email intake", ["email", "inbox", "reply", "request"]],
+    ["document review", ["pdf", "document", "contract", "file", "extract", "summarize"]],
+    ["spreadsheet/reporting", ["spreadsheet", "excel", "sheet", "report", "dashboard", "reconcile"]],
+    ["scheduling/coordination", ["schedule", "dispatch", "calendar", "coordinate", "follow-up"]],
+    ["quoting/estimating", ["quote", "estimate", "proposal", "bid", "pricing"]],
+    ["internal knowledge lookup", ["sop", "policy", "knowledge", "manual", "procedure"]],
+    ["dashboard/forecasting", ["forecast", "predict", "trend", "metric", "analytics"]],
+  ] as const;
+
+  const match = categories.find(([, keywords]) => keywords.some((keyword) => text.includes(keyword)));
+  return match?.[0] || "custom software";
+}
+
+function buildDiagnosticSummary(messages: ClientMessage[], workflowType: string) {
+  const userMessages = messages.filter((m) => m.role === "user").map((m) => m.content);
+  const assistantMessages = messages.filter((m) => m.role === "assistant").map((m) => m.content);
+  const workflowDescription = userMessages[0] || "Workflow diagnostic submitted from the chatbot.";
+  const latestAssistantSummary = assistantMessages.at(-1) || "";
+
+  return {
+    workflowType,
+    workflowDescription,
+    latestAssistantSummary,
+    suggestedNextStep: "Review the workflow diagnostic and follow up for a process mapping call.",
+  };
+}
+
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+function formatTranscript(messages: ClientMessage[]): string {
+  return messages
+    .map((m) => `${m.role.toUpperCase()}: ${m.content}`)
+    .join("\n\n");
+}
+
+async function insertLead(payload: Record<string, unknown>) {
+  const supabaseUrl = getEnv("SUPABASE_URL") || getEnv("NEXT_PUBLIC_SUPABASE_URL");
+  const supabaseKey = getEnv("SUPABASE_SECRET_KEY") || getEnv("SUPABASE_SERVICE_ROLE_KEY");
+
+  if (!supabaseUrl || !supabaseKey) {
+    throw new Error("Supabase server environment variables are missing.");
+  }
+
+  const response = await fetch(`${supabaseUrl.replace(/\/$/, "")}/rest/v1/diagnostic_leads`, {
+    method: "POST",
+    headers: {
+      apikey: supabaseKey,
+      Authorization: `Bearer ${supabaseKey}`,
+      "Content-Type": "application/json",
+      Prefer: "return=representation",
+    },
+    body: JSON.stringify(payload),
+  });
+
+  if (!response.ok) {
+    const text = await response.text().catch(() => "");
+    console.error("Supabase lead insert failed:", response.status, text);
+    throw new Error("Lead database insert failed.");
+  }
+
+  const rows = await response.json().catch(() => []);
+  return Array.isArray(rows) ? rows[0] : null;
+}
+
+async function sendLeadEmail({
+  lead,
+  transcript,
+}: {
+  lead: Record<string, any>;
+  transcript: string;
+}): Promise<boolean> {
+  const resendApiKey = getEnv("RESEND_API_KEY");
+  const to = getEnv("LEAD_NOTIFY_EMAIL") || "wiwyco@gmail.com";
+  const from = getEnv("LEAD_FROM_EMAIL");
+
+  if (!resendApiKey || !from) {
+    console.warn("Lead email skipped: RESEND_API_KEY or LEAD_FROM_EMAIL is missing.");
+    return false;
+  }
+
+  const subject = `New AI pilot diagnostic: ${lead.workflow_type || "workflow lead"}`;
+  const summary = lead.diagnostic_summary || {};
+
+  const html = `
+    <div style="font-family:Arial,sans-serif;line-height:1.5;color:#111">
+      <h2>New Conneen AI diagnostic lead</h2>
+      <p><strong>Name:</strong> ${escapeHtml(lead.name || "Not provided")}</p>
+      <p><strong>Email:</strong> ${escapeHtml(lead.email)}</p>
+      <p><strong>Company:</strong> ${escapeHtml(lead.company || "Not provided")}</p>
+      <p><strong>Phone:</strong> ${escapeHtml(lead.phone || "Not provided")}</p>
+      <p><strong>Workflow type:</strong> ${escapeHtml(lead.workflow_type || "Not classified")}</p>
+      <p><strong>Workflow summary:</strong><br>${escapeHtml(lead.workflow_summary || "")}</p>
+      <p><strong>Latest diagnostic guidance:</strong><br>${escapeHtml(summary.latestAssistantSummary || "")}</p>
+      <h3>Transcript</h3>
+      <pre style="white-space:pre-wrap;background:#f5f5f5;padding:16px;border:1px solid #ddd">${escapeHtml(transcript)}</pre>
+    </div>
+  `;
+
+  const response = await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${resendApiKey}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      from,
+      to,
+      subject,
+      html,
+      reply_to: lead.email,
+    }),
+  });
+
+  if (!response.ok) {
+    const text = await response.text().catch(() => "");
+    console.error("Resend lead email failed:", response.status, text);
+    return false;
+  }
+
+  return true;
+}
+
+export const POST: APIRoute = async ({ request }) => {
+  try {
+    const body = (await request.json().catch(() => null)) as LeadRequest | null;
+    const email = cleanText(body?.email, 320)?.toLowerCase();
+
+    if (!email || !EMAIL_RE.test(email)) {
+      return new Response(JSON.stringify({ error: "A valid email is required." }), {
+        status: 400,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+
+    const messages = cleanMessages(body?.messages);
+    if (!messages.length) {
+      return new Response(JSON.stringify({ error: "A diagnostic transcript is required." }), {
+        status: 400,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+
+    const workflowType = classifyWorkflow(messages);
+    const diagnosticSummary = buildDiagnosticSummary(messages, workflowType);
+    const transcript = formatTranscript(messages);
+
+    const leadPayload = {
+      status: "new",
+      source: "workflow_diagnostic",
+      name: cleanText(body?.name),
+      email,
+      company: cleanText(body?.company),
+      phone: cleanText(body?.phone, 80),
+      workflow_type: workflowType,
+      workflow_summary: diagnosticSummary.workflowDescription,
+      diagnostic_summary: diagnosticSummary,
+      transcript: messages,
+      user_agent: request.headers.get("user-agent"),
+      page_path: cleanText(body?.pagePath, 500),
+    };
+
+    const lead = await insertLead(leadPayload);
+    const emailSent = await sendLeadEmail({ lead: lead || leadPayload, transcript });
+
+    return new Response(JSON.stringify({ ok: true, leadId: lead?.id, emailSent }), {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+    });
+  } catch (err) {
+    console.error(err);
+    return new Response(JSON.stringify({ error: "Lead capture failed." }), {
+      status: 500,
+      headers: { "Content-Type": "application/json" },
+    });
+  }
+};
