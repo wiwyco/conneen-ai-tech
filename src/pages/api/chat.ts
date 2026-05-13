@@ -31,6 +31,18 @@ function cleanMessages(value: unknown): ClientMessage[] {
     }));
 }
 
+function getSafeErrorMessage(err: unknown): string {
+  if (err && typeof err === "object" && "status" in err) {
+    const status = (err as { status?: unknown }).status;
+
+    if (status === 401) return "OpenAI rejected the API key. Check OPENAI_API_KEY.";
+    if (status === 404) return "OpenAI could not find the configured model. Check OPENAI_MODEL.";
+    if (status === 429) return "OpenAI rate limit or quota was reached. Try again shortly.";
+  }
+
+  return "Chat request failed.";
+}
+
 export const POST: APIRoute = async ({ request }) => {
   try {
     const apiKey = import.meta.env.OPENAI_API_KEY;
@@ -84,7 +96,7 @@ Rules:
 `,
       input: messages.map((m) => ({
         role: m.role,
-        content: [{ type: "input_text", text: m.content }],
+        content: m.content,
       })),
     });
 
@@ -94,7 +106,7 @@ Rules:
     });
   } catch (err) {
     console.error(err);
-    return new Response(JSON.stringify({ error: "Chat request failed." }), {
+    return new Response(JSON.stringify({ error: getSafeErrorMessage(err) }), {
       status: 500,
       headers: { "Content-Type": "application/json" },
     });

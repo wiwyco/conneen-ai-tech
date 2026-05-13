@@ -784,7 +784,9 @@ const page = document.getElementById("page");
     } catch (error) {
       addMessage(
         "assistant",
-        "I could not reach the consultation service. Check the server logs and confirm OPENAI_API_KEY is configured."
+        error instanceof Error
+          ? error.message
+          : "I could not reach the consultation service. Check the server logs and confirm OPENAI_API_KEY is configured."
       );
     } finally {
       sendButton.disabled = false;
