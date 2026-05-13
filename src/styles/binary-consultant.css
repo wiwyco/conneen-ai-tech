@@ -242,7 +242,7 @@ body {
 
   .logo-transition {
     position: fixed;
-    z-index: 20;
+    z-index: 40;
     top: 50%;
     left: 50%;
     width: min(560px, calc(100vw - 48px));
@@ -270,8 +270,13 @@ body {
   }
 
   .page.site-mode .logo-transition {
+    opacity: 1;
+    visibility: visible;
+  }
+
+  .page.site-mode .site-brand {
     opacity: 0;
-    visibility: hidden;
+    pointer-events: none;
   }
 
   .brand-lockup {
@@ -307,6 +312,10 @@ body {
     line-height: 0;
   }
 
+  .page.returning-to-chat .site-brand {
+    opacity: 0;
+    pointer-events: none;
+  }
 
   .brand-brain {
     width: 82px;
@@ -405,6 +414,15 @@ body {
     border-bottom: 1px solid rgba(17, 17, 17, 0.12);
     backdrop-filter: blur(14px);
     pointer-events: auto;
+    transition:
+      opacity 350ms ease,
+      background 350ms ease,
+      border-color 350ms ease;
+  }
+
+  .page.returning-to-chat .site-header {
+    opacity: 0;
+    pointer-events: none;
   }
 
   .site-header .brand-lockup {
