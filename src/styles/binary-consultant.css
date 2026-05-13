@@ -297,7 +297,11 @@ body {
   }
 
   .site-brand {
-    display: none;
+    display: block;
+    width: min(250px, 48vw);
+    flex: 0 0 auto;
+    opacity: 1;
+    pointer-events: auto;
   }
 
 
@@ -388,15 +392,16 @@ body {
     top: 0;
     left: 0;
     right: 0;
-    height: 96px;
+    min-height: 96px;
     display: flex;
     align-items: center;
-    justify-content: flex-end;
+    justify-content: space-between;
     gap: 24px;
-    padding: 18px clamp(18px, 3vw, 40px);
-    background: transparent;
-    border-bottom: 0;
-    pointer-events: none;
+    padding: 18px clamp(20px, 4vw, 56px);
+    background: rgba(247, 247, 244, 0.86);
+    border-bottom: 1px solid rgba(17, 17, 17, 0.12);
+    backdrop-filter: blur(14px);
+    pointer-events: auto;
   }
 
   .site-header .brand-lockup {
@@ -495,7 +500,7 @@ body {
   }
 
   .site-main {
-    padding: clamp(28px, 5vw, 72px) clamp(20px, 4vw, 56px) 72px;
+    padding: clamp(148px, 14vw, 176px) clamp(20px, 4vw, 56px) 72px;
   }
 
   .hero-grid {
@@ -726,15 +731,15 @@ body {
 
   @media (max-width: 860px) {
     .site-header {
-      height: 92px;
-      align-items: center;
-      justify-content: flex-end;
-      flex-direction: row;
+      min-height: 112px;
+      align-items: flex-start;
+      justify-content: center;
+      flex-direction: column;
     }
 
     .site-nav {
-      width: auto;
-      max-width: calc(100vw - 280px);
+      width: 100%;
+      max-width: none;
       overflow-x: auto;
       padding-bottom: 4px;
     }
@@ -750,12 +755,20 @@ body {
 
     .logo-transition.fly-home {
       top: 18px;
-      left: 18px;
+      left: 22px;
       width: 220px;
+    }
+
+    .site-main {
+      padding-top: 168px;
     }
   }
 
   @media (max-width: 620px) {
+    .site-brand {
+      width: min(220px, 68vw);
+    }
+
     .chat-shell {
       width: min(100vw - 34px, 840px);
       height: min(100vh - 52px, 600px);
