@@ -709,6 +709,124 @@ body {
     line-height: 1.55;
   }
 
+  .diagnostic-card {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 24px;
+    align-items: center;
+    padding: clamp(24px, 4vw, 38px);
+    border: 1px solid rgba(17, 17, 17, 0.2);
+    background: rgba(255, 255, 255, 0.64);
+    box-shadow: 0 22px 70px rgba(0, 0, 0, 0.055);
+  }
+
+  .diagnostic-card h3 {
+    max-width: 760px;
+  }
+
+  .diagnostic-card p:not(.section-kicker) {
+    max-width: 780px;
+    margin: 18px 0 0;
+    color: rgba(17, 17, 17, 0.72);
+    font-family:
+      Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+      sans-serif;
+    font-size: 18px;
+    line-height: 1.55;
+  }
+
+  .pilot-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px;
+    margin-top: 28px;
+  }
+
+  .pilot-card {
+    min-height: 280px;
+    padding: 22px;
+    border: 1px solid rgba(17, 17, 17, 0.18);
+    background: rgba(255, 255, 255, 0.62);
+    box-shadow: 0 22px 70px rgba(0, 0, 0, 0.055);
+  }
+
+  .pilot-card strong,
+  .timeline-item strong,
+  .trust-list strong,
+  .good-message strong {
+    display: block;
+    font-family:
+      Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+      sans-serif;
+    font-size: 20px;
+    letter-spacing: -0.035em;
+  }
+
+  .pilot-card p {
+    margin: 14px 0 0;
+    color: rgba(17, 17, 17, 0.68);
+    line-height: 1.55;
+  }
+
+  .pilot-card span {
+    color: rgba(17, 17, 17, 0.95);
+  }
+
+  .timeline {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 1px;
+    margin-top: 28px;
+    background: rgba(17, 17, 17, 0.16);
+    border: 1px solid rgba(17, 17, 17, 0.16);
+  }
+
+  .timeline-item {
+    min-height: 240px;
+    padding: 20px;
+    background: rgba(247, 247, 244, 0.88);
+  }
+
+  .timeline-item span {
+    display: block;
+    margin-bottom: 34px;
+    color: rgba(17, 17, 17, 0.48);
+  }
+
+  .timeline-item p,
+  .trust-list p,
+  .good-message p {
+    margin: 12px 0 0;
+    color: rgba(17, 17, 17, 0.68);
+    line-height: 1.55;
+  }
+
+  .trust-list {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 1px;
+    margin-top: 28px;
+    background: rgba(17, 17, 17, 0.16);
+    border: 1px solid rgba(17, 17, 17, 0.16);
+  }
+
+  .trust-list article {
+    min-height: 190px;
+    padding: 20px;
+    background: rgba(255, 255, 255, 0.66);
+  }
+
+  .good-message {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+    align-items: flex-start;
+  }
+
+  .good-message p {
+    margin-top: 0;
+  }
+
   .contact-grid {
     display: grid;
     grid-template-columns: minmax(0, 1fr) minmax(300px, 0.8fr);
@@ -766,12 +884,20 @@ body {
     }
 
     .hero-grid,
+    .diagnostic-card,
     .contact-grid {
       grid-template-columns: 1fr;
     }
 
-    .cards {
+    .cards,
+    .pilot-grid,
+    .timeline,
+    .trust-list {
       grid-template-columns: 1fr;
+    }
+
+    .diagnostic-card {
+      align-items: flex-start;
     }
 
     .logo-transition.fly-home {

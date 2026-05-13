@@ -2,145 +2,272 @@
 ---
 
 <div class="logo-transition" id="logo-transition" aria-hidden="true">
-    <img class="brand-logo-image" src="/assets/conneen-ai-logo.png" alt="" />
-  </div>
+  <img class="brand-logo-image" src="/assets/conneen-ai-logo.png" alt="" />
+</div>
 
-  <section class="site-shell" id="site-shell" aria-label="Conneen AI Consulting website">
-    <header class="site-header">
-      <a class="brand-lockup site-brand" href="#top" aria-label="Conneen AI Consulting home">
-        <img class="brand-logo-image" src="/assets/conneen-ai-logo.png" alt="Conneen AI Consulting" />
-      </a>
+<section class="site-shell" id="site-shell" aria-label="Conneen AI Consulting website">
+  <header class="site-header">
+    <a class="brand-lockup site-brand" href="#top" aria-label="Conneen AI Consulting home">
+      <img class="brand-logo-image" src="/assets/conneen-ai-logo.png" alt="Conneen AI Consulting" />
+    </a>
 
-      <nav class="site-nav" aria-label="Primary navigation">
-        <a href="#about">About</a>
-        <a href="#services">Services</a>
-        <a href="#contact">Contact</a>
-        <button class="site-nav-button" id="return-chat-button" type="button">
-          Return to chatbot
-        </button>
-      </nav>
-    </header>
+    <nav class="site-nav" aria-label="Primary navigation">
+      <a href="#problems">Problems</a>
+      <a href="#pilots">Pilots</a>
+      <a href="#process">Process</a>
+      <a href="#contact">Contact</a>
+      <button class="site-nav-button return-chat-trigger" id="return-chat-button" type="button">
+        Run diagnostic
+      </button>
+    </nav>
+  </header>
 
-    <div class="site-main" id="top">
-      <section class="hero-grid">
-        <div class="hero-copy">
-          <p class="section-kicker">Practical AI systems for real operations</p>
-          <h2>Turn messy workflows into measurable gains.</h2>
+  <div class="site-main" id="top">
+    <section class="hero-grid">
+      <div class="hero-copy">
+        <p class="section-kicker">Practical AI systems for messy business workflows</p>
+        <h2>Bring one slow process. Leave with a pilot plan.</h2>
+        <p>
+          Conneen AI builds custom assistants, automations, dashboards, and software tools that reduce repetitive work, improve throughput, and keep expert judgment in the loop.
+        </p>
+        <div class="hero-actions">
+          <button class="site-button primary return-chat-trigger" type="button">Run workflow diagnostic</button>
+          <a class="site-button" href="#pilots">See example pilots</a>
+        </div>
+      </div>
+
+      <aside class="consulting-panel" aria-label="Pilot planning preview">
+        <div class="panel-top">
+          <p class="panel-label">Pilot planning</p>
+          <p class="panel-title">From bottleneck to first useful pilot.</p>
+        </div>
+        <div class="signal-list">
+          <div class="signal-item">
+            <span class="signal-num">01</span>
+            <span>
+              <strong>Workflow described</strong>
+              Emails, calls, PDFs, spreadsheets, reports, quotes, schedules, or intake tasks.
+            </span>
+          </div>
+          <div class="signal-item">
+            <span class="signal-num">02</span>
+            <span>
+              <strong>Automation opportunity</strong>
+              Classify the workflow, identify tools/data, and find the highest-leverage intervention.
+            </span>
+          </div>
+          <div class="signal-item">
+            <span class="signal-num">03</span>
+            <span>
+              <strong>Pilot recommendation</strong>
+              A narrow first build with human review, clear inputs, and measurable operational value.
+            </span>
+          </div>
+        </div>
+      </aside>
+    </section>
+
+    <section class="section" id="problems">
+      <p class="section-kicker">Where AI can actually help</p>
+      <h3>Start with the work your team repeats every week.</h3>
+      <p>
+        The best first AI project is usually not a giant transformation. It is one annoying, recurring workflow where information moves slowly, gets copied by hand, or depends on scattered knowledge.
+      </p>
+      <div class="cards">
+        <article class="card">
+          <strong>Manual data entry</strong>
+          <p>Turn emails, forms, PDFs, notes, and spreadsheets into structured records your team can review.</p>
+        </article>
+        <article class="card">
+          <strong>Slow quoting or estimating</strong>
+          <p>Draft quotes, collect missing details, check rules, and keep a person in control of final approval.</p>
+        </article>
+        <article class="card">
+          <strong>Scattered company knowledge</strong>
+          <p>Create internal assistants that answer from SOPs, documents, spreadsheets, policies, and business rules.</p>
+        </article>
+        <article class="card">
+          <strong>Reporting bottlenecks</strong>
+          <p>Automate recurring reports, dashboards, exception lists, and weekly operational summaries.</p>
+        </article>
+        <article class="card">
+          <strong>Document-heavy review</strong>
+          <p>Classify, compare, summarize, and route technical documents while preserving expert review.</p>
+        </article>
+        <article class="card">
+          <strong>Scheduling and coordination</strong>
+          <p>Help teams triage requests, recommend next actions, and reduce manual follow-up loops.</p>
+        </article>
+      </div>
+    </section>
+
+    <section class="section diagnostic-section" id="diagnostic">
+      <div class="diagnostic-card">
+        <div>
+          <p class="section-kicker">AI pilot finder</p>
+          <h3>The chatbot is the front door to scoping the work.</h3>
           <p>
-            Conneen AI builds AI, automation, analytics, and custom software systems for businesses that need less manual drag, better information flow, and tools people can actually use.
+            Describe one repetitive process. The diagnostic should classify the workflow, ask what tools and data are involved, suggest a narrow first pilot, and produce a summary that can become a lead or consultation brief.
           </p>
-          <div class="hero-actions">
-            <a class="site-button primary" href="mailto:wiwyco@gmail.com">Start a consultation</a>
-            <a class="site-button" href="#services">Explore services</a>
+        </div>
+        <button class="site-button primary return-chat-trigger" type="button">Open diagnostic</button>
+      </div>
+    </section>
+
+    <section class="section" id="pilots">
+      <p class="section-kicker">Example pilots</p>
+      <h3>From messy workflow to working system.</h3>
+      <p>
+        These are the kinds of narrow, practical pilots that help prove value before a larger build.
+      </p>
+      <div class="pilot-grid">
+        <article class="pilot-card">
+          <strong>Email intake -> structured task queue</strong>
+          <p><span>Before:</span> Requests arrive by email and get copied into a spreadsheet.</p>
+          <p><span>After:</span> The system extracts request type, urgency, customer, location, and suggested next action for review.</p>
+          <p><span>First pilot:</span> Email parser + review dashboard + notification flow.</p>
+        </article>
+        <article class="pilot-card">
+          <strong>Large files -> summarized action list</strong>
+          <p><span>Before:</span> Staff manually read technical documents to find changes, issues, or requirements.</p>
+          <p><span>After:</span> AI classifies, summarizes, compares, and flags items for expert review.</p>
+          <p><span>First pilot:</span> Document classifier + extraction rules + approval queue.</p>
+        </article>
+        <article class="pilot-card">
+          <strong>Recurring reports -> automated operational signal</strong>
+          <p><span>Before:</span> Someone gathers spreadsheets, cleans data, and sends the same report every week.</p>
+          <p><span>After:</span> Data is validated, exceptions are highlighted, and the report is drafted automatically.</p>
+          <p><span>First pilot:</span> Spreadsheet ingestion + exception report + dashboard.</p>
+        </article>
+        <article class="pilot-card">
+          <strong>Scattered answers -> company assistant</strong>
+          <p><span>Before:</span> Employees ask around or dig through files to find the right rule, process, or precedent.</p>
+          <p><span>After:</span> A private assistant answers from approved company knowledge and cites source materials.</p>
+          <p><span>First pilot:</span> Knowledge base ingestion + internal Q&A assistant.</p>
+        </article>
+      </div>
+    </section>
+
+    <section class="section" id="teams">
+      <p class="section-kicker">Strong-fit teams</p>
+      <h3>Built for operationally complex businesses.</h3>
+      <div class="cards">
+        <article class="card">
+          <strong>Contractors & field service</strong>
+          <p>Estimates, work orders, inspections, dispatch, customer follow-up, and recurring admin.</p>
+        </article>
+        <article class="card">
+          <strong>Property operations</strong>
+          <p>Maintenance requests, lease data, vendor coordination, tenant communication, and reporting.</p>
+        </article>
+        <article class="card">
+          <strong>Technical documentation</strong>
+          <p>Document comparison, classification, technical-data workflows, and review support.</p>
+        </article>
+        <article class="card">
+          <strong>Government-adjacent teams</strong>
+          <p>Careful, auditable, human-reviewed tools for document-heavy operational processes.</p>
+        </article>
+        <article class="card">
+          <strong>Fisheries, wildlife, energy & geospatial</strong>
+          <p>Field data, maps, reporting, forecasting, and operational decision support.</p>
+        </article>
+        <article class="card">
+          <strong>Small business operations</strong>
+          <p>Replace fragile spreadsheet and inbox processes with lightweight internal tools.</p>
+        </article>
+      </div>
+    </section>
+
+    <section class="section" id="process">
+      <p class="section-kicker">Pilot process</p>
+      <h3>Start small. Prove value. Expand only when it works.</h3>
+      <div class="timeline">
+        <article class="timeline-item">
+          <span>01</span>
+          <strong>Process map</strong>
+          <p>Identify the repetitive workflow, decision points, inputs, outputs, and failure points.</p>
+        </article>
+        <article class="timeline-item">
+          <span>02</span>
+          <strong>Pilot scope</strong>
+          <p>Choose one narrow automation target with clear success criteria and review rules.</p>
+        </article>
+        <article class="timeline-item">
+          <span>03</span>
+          <strong>Prototype</strong>
+          <p>Build a working version using real or representative data from your process.</p>
+        </article>
+        <article class="timeline-item">
+          <span>04</span>
+          <strong>Human review</strong>
+          <p>Keep your team in control of approvals, edits, exceptions, and high-impact decisions.</p>
+        </article>
+        <article class="timeline-item">
+          <span>05</span>
+          <strong>Measure impact</strong>
+          <p>Compare time saved, throughput, reliability, accuracy, and bottleneck reduction.</p>
+        </article>
+      </div>
+    </section>
+
+    <section class="section trust-section" id="trust">
+      <p class="section-kicker">Trust</p>
+      <h3>AI that supports your team instead of bypassing it.</h3>
+      <p>
+        Conneen AI does not build black-box systems that blindly replace expert judgment. The goal is to draft, organize, check, recommend, and accelerate work while preserving human control where it matters.
+      </p>
+      <div class="trust-list">
+        <article>
+          <strong>Human review by default</strong>
+          <p>High-impact workflows should keep people in the approval loop.</p>
+        </article>
+        <article>
+          <strong>Narrow practical pilots</strong>
+          <p>Start with one focused workflow before committing to a larger transformation.</p>
+        </article>
+        <article>
+          <strong>Built around your constraints</strong>
+          <p>The system should fit your tools, data, review process, and operational reality.</p>
+        </article>
+        <article>
+          <strong>Data handling discussed first</strong>
+          <p>Privacy, access, and sensitive process details should be scoped before implementation.</p>
+        </article>
+      </div>
+    </section>
+
+    <section class="section" id="contact">
+      <p class="section-kicker">Contact</p>
+      <h3>Bring one slow process. We'll find the first useful pilot.</h3>
+      <p>
+        Use the diagnostic to shape the idea, or send a note with the process you want to improve.
+      </p>
+
+      <div class="contact-grid">
+        <div class="contact-card">
+          <div class="contact-row">
+            <span>Phone</span>
+            <a href="tel:+19072098799">907-209-8799</a>
+          </div>
+          <div class="contact-row">
+            <span>Email</span>
+            <a href="mailto:wiwyco@gmail.com">wiwyco@gmail.com</a>
+          </div>
+          <div class="contact-row">
+            <span>Location</span>
+            <span>5851 Sargassum Lane, Milton, FL 32583 US</span>
           </div>
         </div>
 
-        <aside class="consulting-panel" aria-label="Consulting interface preview">
-          <div class="panel-top">
-            <p class="panel-label">Consulting interface</p>
-            <p class="panel-title">Find the highest-leverage AI pilot.</p>
-          </div>
-          <div class="signal-list">
-            <div class="signal-item">
-              <span class="signal-num">01</span>
-              <span>
-                <strong>Map the bottleneck</strong>
-                Quote work, reporting, scheduling, intake, document review, or data entry.
-              </span>
-            </div>
-            <div class="signal-item">
-              <span class="signal-num">02</span>
-              <span>
-                <strong>Connect the knowledge</strong>
-                Bring together spreadsheets, forms, files, emails, and business rules.
-              </span>
-            </div>
-            <div class="signal-item">
-              <span class="signal-num">03</span>
-              <span>
-                <strong>Build a practical pilot</strong>
-                Keep expert review in the loop while removing repetitive work.
-              </span>
-            </div>
-          </div>
-        </aside>
-      </section>
-
-      <section class="section" id="about">
-        <p class="section-kicker">About</p>
-        <h3>Hands-on AI consulting without layers of sales overhead.</h3>
-        <p>
-          Conneen AI is built around direct, engineering-first consulting. The goal is not vague AI strategy; it is identifying where AI and automation can improve throughput, reliability, and decision support inside real business workflows.
-        </p>
-      </section>
-
-      <section class="section" id="services">
-        <p class="section-kicker">Services</p>
-        <h3>From strategy to implementation.</h3>
-        <div class="cards">
-          <article class="card">
-            <strong>AI strategy development</strong>
-            <p>Identify where AI can support business objectives, reduce bottlenecks, and create a focused implementation roadmap.</p>
-          </article>
-          <article class="card">
-            <strong>Model implementation</strong>
-            <p>Integrate AI into existing processes through assistants, automations, custom applications, and data workflows.</p>
-          </article>
-          <article class="card">
-            <strong>Training & support</strong>
-            <p>Help teams understand, operate, and improve the AI tools they depend on while keeping human judgment in the loop.</p>
-          </article>
-          <article class="card">
-            <strong>Data analysis and insights</strong>
-            <p>Turn operational data into dashboards, forecasts, reports, and decision-ready signals.</p>
-          </article>
-          <article class="card">
-            <strong>Automation solutions</strong>
-            <p>Replace repetitive manual steps with reliable workflows across documents, forms, spreadsheets, and internal systems.</p>
-          </article>
-          <article class="card">
-            <strong>Custom AI solutions</strong>
-            <p>Build tailored assistants and software systems around your company knowledge, constraints, and review process.</p>
-          </article>
+        <div class="contact-card good-message">
+          <strong>Good first message</strong>
+          <p>
+            "We spend X hours per week on Y. The inputs are A/B/C. The output is usually Z. The part that breaks most often is..."
+          </p>
+          <button class="site-button primary return-chat-trigger" type="button">Run diagnostic</button>
         </div>
-      </section>
-
-      <section class="section" id="contact">
-        <p class="section-kicker">Contact</p>
-        <h3>Let’s explore AI solutions together.</h3>
-        <p>
-          Send a note, call, or use the chatbot to shape your first pilot idea before booking a deeper consultation.
-        </p>
-
-        <div class="contact-grid">
-          <div class="contact-card">
-            <div class="contact-row">
-              <span>Phone</span>
-              <a href="tel:+19072098799">907-209-8799</a>
-            </div>
-            <div class="contact-row">
-              <span>Email</span>
-              <a href="mailto:wiwyco@gmail.com">wiwyco@gmail.com</a>
-            </div>
-            <div class="contact-row">
-              <span>Location</span>
-              <span>5851 Sargassum Lane, Milton, FL 32583 US</span>
-            </div>
-          </div>
-
-          <div class="contact-card">
-            <strong>Hours</strong>
-            <div class="hours-grid" aria-label="Business hours">
-              <span>Monday</span><span>9:00am – 5:00pm</span>
-              <span>Tuesday</span><span>9:00am – 5:00pm</span>
-              <span>Wednesday</span><span>9:00am – 5:00pm</span>
-              <span>Thursday</span><span>9:00am – 5:00pm</span>
-              <span>Friday</span><span>9:00am – 5:00pm</span>
-              <span>Saturday</span><span>9:00am – 5:00pm</span>
-              <span>Sunday</span><span>9:00am – 5:00pm</span>
-            </div>
-          </div>
-        </div>
-      </section>
-    </div>
-  </section>
+      </div>
+    </section>
+  </div>
+</section>

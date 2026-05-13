@@ -9,7 +9,7 @@ const page = document.getElementById("page");
   const goSiteHotspot = document.getElementById("go-site-hotspot");
   const siteShell = document.getElementById("site-shell");
   const logoTransition = document.getElementById("logo-transition");
-  const returnChatButton = document.getElementById("return-chat-button");
+  const returnChatTriggers = document.querySelectorAll(".return-chat-trigger");
 
   const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
@@ -788,7 +788,7 @@ const page = document.getElementById("page");
       );
     } finally {
       sendButton.disabled = false;
-      sendButton.textContent = "Send";
+      sendButton.textContent = "Analyze";
       chatInput.focus();
     }
   });
@@ -801,7 +801,12 @@ const page = document.getElementById("page");
   });
 
   goSiteHotspot.addEventListener("click", beginSiteTransition);
-  returnChatButton.addEventListener("click", returnToChat);
+  returnChatTriggers.forEach((button) => {
+    button.addEventListener("click", (event) => {
+      event.stopPropagation();
+      returnToChat();
+    });
+  });
 
   window.addEventListener("resize", resize);
   window.addEventListener("click", handlePointer, { passive: true });
