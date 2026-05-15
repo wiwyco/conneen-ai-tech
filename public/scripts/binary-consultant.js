@@ -788,8 +788,6 @@ const page = document.getElementById("page");
           continue;
         }
 
-        // The chat reveal needs a blank center with 0s as border and 1s outside.
-        // After the wave finishes, the 0 border grows outward from the center instead of snapping in.
         if (state.completed && state.mode === "chat") {
           const chatRect = chatShell.getBoundingClientRect();
           const panelW = chatRect.width
@@ -824,7 +822,6 @@ const page = document.getElementById("page");
 
           const cx = col * state.cellW + state.cellW / 2;
           const cy = row * state.cellH;
-          const borderPad = state.isMobile ? Math.max(7, state.cellH * 0.48) : 10;
 
           const insideRevealedPanel =
             cx > left &&
@@ -832,21 +829,12 @@ const page = document.getElementById("page");
             cy > top &&
             cy < bottom;
 
-          const border =
-            cx > left - borderPad &&
-            cx < right + borderPad &&
-            cy > top - borderPad &&
-            cy < bottom + borderPad &&
-            !insideRevealedPanel;
-
           if (insideRevealedPanel) continue;
 
-          ctx.fillStyle = border
-            ? "rgba(17, 17, 17, 0.72)"
-            : `rgba(17, 17, 17, ${alpha})`;
+          ctx.fillStyle = `rgba(17, 17, 17, ${alpha})`;
 
           drawGlyph(
-            border ? "0" : "1",
+            "1",
             cellX + waveOffset,
             cellY + ripple.yOffset,
             ripple.scale
