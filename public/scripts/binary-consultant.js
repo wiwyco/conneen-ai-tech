@@ -615,7 +615,7 @@ const page = document.getElementById("page");
       {
         name: "instruction",
         lines: instructionLines,
-        startCol: Math.max(4, Math.floor((state.cols - instructionWidth) / 2)),
+        startCol: Math.max(2, Math.floor((state.cols - instructionWidth) / 2)),
         startRow: state.isMobile
           ? Math.max(8, Math.floor(state.rows * 0.72))
           : Math.max(6, state.rows - instructionLines.length - 5),
@@ -757,8 +757,12 @@ const page = document.getElementById("page");
         // After the wave finishes, the 0 border grows outward from the center instead of snapping in.
         if (state.completed && state.mode === "chat") {
           const chatRect = chatShell.getBoundingClientRect();
-          const panelW = chatRect.width || Math.min(state.leadPaneOpen ? 1240 : 880, state.width - 56);
-          const panelH = chatRect.height || Math.min(state.leadPaneOpen ? 680 : 640, state.height - 56);
+          const panelW = chatRect.width
+            ? chatRect.width + 14
+            : Math.min(state.leadPaneOpen ? 1240 : 880, state.width - 56);
+          const panelH = chatRect.height
+            ? chatRect.height + 14
+            : Math.min(state.leadPaneOpen ? 680 : 640, state.height - 56);
           const centerX = chatRect.width
             ? chatRect.left + chatRect.width / 2
             : state.width / 2 + state.chatOffsetX;
@@ -785,7 +789,7 @@ const page = document.getElementById("page");
 
           const cx = col * state.cellW + state.cellW / 2;
           const cy = row * state.cellH + state.cellH / 2;
-          const borderPad = 18;
+          const borderPad = state.isMobile ? Math.max(7, state.cellH * 0.48) : 10;
 
           const insideRevealedPanel =
             cx > left &&
@@ -830,6 +834,19 @@ const page = document.getElementById("page");
 
         drawGlyph(String(bit), cellX + waveOffset, cellY + ripple.yOffset, ripple.scale);
       }
+    }
+
+    if (state.goSiteBox && state.mode !== "site" && state.mode !== "siteTransition") {
+      ctx.save();
+      ctx.strokeStyle = "rgba(17, 17, 17, 0.55)";
+      ctx.lineWidth = 1;
+      ctx.strokeRect(
+        Math.round(state.goSiteBox.left) + 0.5,
+        Math.round(state.goSiteBox.top) + 0.5,
+        Math.round(state.goSiteBox.width),
+        Math.round(state.goSiteBox.height)
+      );
+      ctx.restore();
     }
 
     positionGoSiteHotspot();
