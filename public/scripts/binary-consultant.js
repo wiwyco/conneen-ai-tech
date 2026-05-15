@@ -671,15 +671,15 @@ const page = document.getElementById("page");
         }
 
         const textLeft = zone.startCol * state.cellW;
-        const textTop = zone.startRow * state.cellH;
+        const textCenterY = zone.startRow * state.cellH;
         const textWidth = textW * state.cellW;
-        const textHeight = textH * state.cellH;
-        const framePadX = state.isMobile ? state.cellW * 2.4 : state.cellW * 2.6;
-        const framePadY = state.isMobile ? state.cellH * 1.1 : state.cellH * 1.15;
+        const textHeight = Math.max(1, textH) * state.cellH;
+        const framePadX = state.isMobile ? state.cellW * 1.6 : state.cellW * 1.7;
+        const framePadY = state.isMobile ? state.cellH * 0.62 : state.cellH * 0.68;
         const frameWidth = textWidth + framePadX * 2;
         const frameHeight = textHeight + framePadY * 2;
         const frameLeft = textLeft + textWidth / 2 - frameWidth / 2;
-        const frameTop = textTop + textHeight / 2 - frameHeight / 2;
+        const frameTop = textCenterY - frameHeight / 2;
 
         state.goSiteBox = {
           left: boxLeft * state.cellW,
@@ -822,7 +822,7 @@ const page = document.getElementById("page");
           const bottom = centerY + revealH / 2;
 
           const cx = col * state.cellW + state.cellW / 2;
-          const cy = row * state.cellH + state.cellH / 2;
+          const cy = row * state.cellH;
           const borderPad = state.isMobile ? Math.max(7, state.cellH * 0.48) : 10;
 
           const insideRevealedPanel =
