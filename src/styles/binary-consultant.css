@@ -1112,17 +1112,17 @@ body {
 
     .chat-shell {
       --chat-offset-x: 0px;
-      --chat-offset-y: 92px;
+      --chat-offset-y: 22px;
 
       width: min(100vw - 52px, 840px);
-      height: min(500px, calc(100vh - 310px));
-      min-height: 380px;
+      height: min(520px, calc(100vh - 230px));
+      min-height: 360px;
     }
 
     .chat-shell.lead-open {
       width: min(100vw - 52px, 840px);
-      height: min(650px, calc(100vh - 188px));
-      min-height: 520px;
+      height: min(650px, calc(100vh - 150px));
+      min-height: 500px;
     }
 
     .chat-shell.lead-open .chat-panel {
@@ -1147,7 +1147,7 @@ body {
     }
 
     .chat-header {
-      padding: 14px 16px;
+      padding: 12px 14px;
     }
 
     .eyebrow {
@@ -1156,28 +1156,28 @@ body {
     }
 
     h1 {
-      font-size: clamp(28px, 9vw, 38px);
-      line-height: 0.96;
+      font-size: clamp(24px, 8vw, 34px);
+      line-height: 0.98;
       letter-spacing: -0.045em;
     }
 
     .chat-log {
-      padding: 14px;
+      padding: 12px;
       gap: 10px;
     }
 
     .message {
       max-width: 94%;
-      padding: 11px 12px;
-      font-size: 13px;
+      padding: 10px 11px;
+      font-size: 12px;
       line-height: 1.42;
     }
 
     .chat-form textarea {
-      min-height: 92px;
-      max-height: 120px;
-      padding: 12px;
-      font-size: 13px;
+      min-height: 76px;
+      max-height: 104px;
+      padding: 10px;
+      font-size: 12px;
       line-height: 1.35;
     }
 
@@ -1190,7 +1190,7 @@ body {
     .chat-form button,
     .lead-fields button {
       min-height: 42px;
-      font-size: 13px;
+      font-size: 12px;
     }
 
     .lead-actions {
