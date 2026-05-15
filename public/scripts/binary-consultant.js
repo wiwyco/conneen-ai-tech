@@ -678,9 +678,9 @@ const page = document.getElementById("page");
         const framePadY = state.isMobile ? state.cellH * 0.62 : state.cellH * 0.68;
         const frameWidth = textWidth + framePadX * 2;
         const baseFrameHeight = textHeight + framePadY * 2;
-        const frameHeight = baseFrameHeight + state.cellH * 0.35;
+        const frameHeight = baseFrameHeight + state.cellH * 0.2;
         const frameLeft = textLeft + textWidth / 2 - frameWidth / 2;
-        const frameTop = textCenterY - baseFrameHeight / 2 - state.cellH * 0.35;
+        const frameTop = textCenterY - baseFrameHeight / 2 - state.cellH * 0.2;
 
         state.goSiteBox = {
           left: boxLeft * state.cellW,
