@@ -672,6 +672,10 @@ const page = document.getElementById("page");
 
         state.goSiteBox = {
           left: boxLeft * state.cellW,
+          frameLeft: boxLeft * state.cellW,
+          frameTop: (zone.startRow - 0.5) * state.cellH,
+          frameWidth: (boxRight - boxLeft + 1) * state.cellW,
+          frameHeight: 2 * state.cellH,
           top: boxTop * state.cellH,
           width: (boxRight - boxLeft + 1) * state.cellW,
           height: (boxBottom - boxTop + 1) * state.cellH,
@@ -865,10 +869,10 @@ const page = document.getElementById("page");
       ctx.lineWidth = 1;
       const inset = 1;
       ctx.strokeRect(
-        Math.round(state.goSiteBox.left) + inset + 0.5,
-        Math.round(state.goSiteBox.top) + inset + 0.5,
-        Math.round(state.goSiteBox.width) - inset * 2,
-        Math.round(state.goSiteBox.height) - inset * 2
+        Math.round(state.goSiteBox.frameLeft) + inset + 0.5,
+        Math.round(state.goSiteBox.frameTop) + inset + 0.5,
+        Math.round(state.goSiteBox.frameWidth) - inset * 2,
+        Math.round(state.goSiteBox.frameHeight) - inset * 2
       );
       ctx.restore();
     }
