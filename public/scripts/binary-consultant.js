@@ -873,6 +873,7 @@ const page = document.getElementById("page");
 
     if (
       state.goSiteBox?.frameVisible &&
+      state.goSiteVisible &&
       state.mode !== "site" &&
       state.mode !== "siteTransition"
     ) {
