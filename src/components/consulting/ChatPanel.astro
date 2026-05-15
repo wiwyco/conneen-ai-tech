@@ -17,13 +17,22 @@
     <form class="lead-capture" id="lead-capture-form" hidden>
       <div>
         <p class="lead-capture-title">Send this diagnostic to Conneen AI</p>
-        <p class="lead-capture-copy">Share your contact details and the workflow transcript will be saved as a consultation brief.</p>
+        <p class="lead-capture-copy">I can draft this from the diagnostic, or you can edit it before sending.</p>
       </div>
       <div class="lead-fields">
         <input id="lead-name" name="name" type="text" placeholder="Name" autocomplete="name" />
         <input id="lead-email" name="email" type="email" placeholder="Email" autocomplete="email" required />
         <input id="lead-company" name="company" type="text" placeholder="Company" autocomplete="organization" />
-        <button id="lead-submit-button" type="submit">Send brief</button>
+        <textarea
+          id="lead-workflow"
+          name="workflow"
+          placeholder="Workflow brief, tools/data involved, likely pilot, and human review points..."
+          required
+        ></textarea>
+        <div class="lead-actions">
+          <button id="lead-draft-button" type="button">Draft from chat</button>
+          <button id="lead-submit-button" type="submit">Send brief</button>
+        </div>
       </div>
     </form>
 
@@ -38,4 +47,6 @@
       <button id="send-button" type="submit">Analyze</button>
     </form>
   </div>
+
+  <div class="lead-thanks-message" id="lead-thanks-message" aria-live="polite"></div>
 </section>

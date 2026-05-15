@@ -8,6 +8,15 @@ const page = document.getElementById("page");
   const sendButton = document.getElementById("send-button");
   const leadCaptureForm = document.getElementById("lead-capture-form");
   const leadSubmitButton = document.getElementById("lead-submit-button");
+  const leadDraftButton = document.getElementById("lead-draft-button");
+  const leadWorkflowInput = document.getElementById("lead-workflow");
+  const leadNameInput = document.getElementById("lead-name");
+  const leadEmailInput = document.getElementById("lead-email");
+  const leadCompanyInput = document.getElementById("lead-company");
+  const leadThanksMessage = document.getElementById("lead-thanks-message");
+  const siteLeadForm = document.getElementById("site-lead-form");
+  const siteLeadSubmitButton = document.getElementById("site-lead-submit-button");
+  const siteLeadStatus = document.getElementById("site-lead-status");
   const goSiteHotspot = document.getElementById("go-site-hotspot");
   const siteShell = document.getElementById("site-shell");
   const logoTransition = document.getElementById("logo-transition");
@@ -21,6 +30,8 @@ const page = document.getElementById("page");
     height: 0,
     cellW: 14,
     cellH: 18,
+    glyphFont: "14px ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace",
+    isMobile: false,
     cols: 0,
     rows: 0,
     bits: new Uint8Array(0),
@@ -41,12 +52,21 @@ const page = document.getElementById("page");
     chatOffsetY: -12,
     goSiteVisible: false,
     goSiteBox: null,
+    leadPaneOpen: false,
   };
 
   function resize() {
     state.dpr = Math.min(window.devicePixelRatio || 1, 1.5);
     state.width = window.innerWidth;
     state.height = window.innerHeight;
+    state.isMobile = state.width <= 620;
+    state.cellW = state.isMobile ? 10 : 14;
+    state.cellH = state.isMobile ? 14 : 18;
+    state.glyphFont = state.isMobile
+      ? "11px ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace"
+      : "14px ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace";
+    state.chatOffsetX = state.isMobile ? 0 : 8;
+    state.chatOffsetY = state.isMobile ? 54 : -12;
     canvas.width = Math.floor(state.width * state.dpr);
     canvas.height = Math.floor(state.height * state.dpr);
     canvas.style.width = `${state.width}px`;
@@ -177,10 +197,14 @@ const page = document.getElementById("page");
 
   function getGoSiteZone() {
     const text = "GO TO SITE";
+    const startCol = state.isMobile
+      ? Math.max(4, state.cols - text.length - 6)
+      : Math.max(4, state.cols - text.length - 8);
+
     return {
       name: "goSite",
       lines: [text],
-      startCol: Math.max(4, state.cols - text.length - 8),
+      startCol,
       startRow: 3,
       padX: 2,
       padY: 1,
@@ -304,6 +328,67 @@ const page = document.getElementById("page");
       showGoSiteHotspot();
       chatInput.focus();
     }, reducedMotion ? 220 : 1550);
+  }
+
+  function openLeadPane() {
+    if (state.leadPaneOpen) return;
+
+    state.leadPaneOpen = true;
+    leadCaptureForm.hidden = false;
+    chatShell.classList.add("lead-open");
+    state.borderRevealStartedAt = performance.now();
+  }
+
+  function closeLeadPane() {
+    state.leadPaneOpen = false;
+    leadCaptureForm.hidden = true;
+    chatShell.classList.remove("lead-open");
+    state.borderRevealStartedAt = performance.now();
+  }
+
+  async function getThankYouMessage(payload) {
+    try {
+      const res = await fetch("/api/lead-thanks", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json();
+
+      if (res.ok && data.message) return data.message;
+    } catch (error) {
+      console.error(error);
+    }
+
+    return "Thank you. Your diagnostic brief is saved, and Conneen AI will review the first useful pilot opportunity.";
+  }
+
+  async function playLeadThanks(message) {
+    hideGoSiteHotspot();
+    closeLeadPane();
+
+    chatShell.classList.remove("visible");
+    chatShell.classList.add("site-exit");
+    page.classList.add("lead-thanks-active");
+
+    leadThanksMessage.textContent = message;
+    leadThanksMessage.classList.add("visible");
+
+    logoTransition.classList.add("visible");
+    logoTransition.classList.remove("fly-home");
+
+    setTimeout(() => {
+      logoTransition.classList.add("fly-home");
+      leadThanksMessage.classList.remove("visible");
+    }, reducedMotion ? 900 : 2200);
+
+    setTimeout(() => {
+      page.classList.remove("lead-thanks-active");
+      chatShell.classList.remove("site-exit");
+      chatShell.classList.add("visible");
+      showGoSiteHotspot();
+      chatInput.focus();
+    }, reducedMotion ? 1400 : 3400);
   }
 
   function updateWaves() {
@@ -511,11 +596,9 @@ const page = document.getElementById("page");
   }
 
   function getEmbeddedTextZones() {
-    const instructionLines = [
-      "Click or tap the field",
-      "to turn your data",
-      "into actionable insights",
-    ];
+    const instructionLines = state.isMobile
+      ? ["Tap to organize your data"]
+      : ["Click to organize your data"];
 
     const instructionWidth = Math.max(...instructionLines.map((line) => line.length));
     const zones = [
@@ -532,8 +615,10 @@ const page = document.getElementById("page");
       {
         name: "instruction",
         lines: instructionLines,
-        startCol: Math.max(4, state.cols - instructionWidth - 8),
-        startRow: Math.max(6, state.rows - instructionLines.length - 5),
+        startCol: Math.max(4, Math.floor((state.cols - instructionWidth) / 2)),
+        startRow: state.isMobile
+          ? Math.max(8, Math.floor(state.rows * 0.72))
+          : Math.max(6, state.rows - instructionLines.length - 5),
         padX: 2,
         padY: 1,
         alpha: 0.62,
@@ -620,7 +705,7 @@ const page = document.getElementById("page");
     updateSiteWaves();
 
     ctx.clearRect(0, 0, state.width, state.height);
-    ctx.font = "14px ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace";
+    ctx.font = state.glyphFont;
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
 
@@ -671,10 +756,15 @@ const page = document.getElementById("page");
         // The chat reveal needs a blank center with 0s as border and 1s outside.
         // After the wave finishes, the 0 border grows outward from the center instead of snapping in.
         if (state.completed && state.mode === "chat") {
-          const panelW = Math.min(880, state.width - 56);
-          const panelH = Math.min(640, state.height - 56);
-          const centerX = state.width / 2 + state.chatOffsetX;
-          const centerY = state.height / 2 + state.chatOffsetY;
+          const chatRect = chatShell.getBoundingClientRect();
+          const panelW = chatRect.width || Math.min(state.leadPaneOpen ? 1240 : 880, state.width - 56);
+          const panelH = chatRect.height || Math.min(state.leadPaneOpen ? 680 : 640, state.height - 56);
+          const centerX = chatRect.width
+            ? chatRect.left + chatRect.width / 2
+            : state.width / 2 + state.chatOffsetX;
+          const centerY = chatRect.height
+            ? chatRect.top + chatRect.height / 2
+            : state.height / 2 + state.chatOffsetY;
 
           const fullLeft = centerX - panelW / 2;
           const fullRight = centerX + panelW / 2;
@@ -765,7 +855,11 @@ const page = document.getElementById("page");
     const userMessageCount = chatLog.querySelectorAll(".message.user").length;
 
     if (userMessageCount >= 2 && leadCaptureForm.hidden) {
-      leadCaptureForm.hidden = false;
+      openLeadPane();
+      addMessage(
+        "assistant",
+        "I can fill out the inquiry pane on the right using what we covered. Use Draft from chat, then edit anything before sending."
+      );
     }
   }
 
@@ -814,6 +908,7 @@ const page = document.getElementById("page");
       name: String(formData.get("name") || ""),
       email: String(formData.get("email") || ""),
       company: String(formData.get("company") || ""),
+      workflow: String(formData.get("workflow") || ""),
       pagePath: window.location.pathname,
       messages: getMessagesForApi(),
     };
@@ -831,13 +926,8 @@ const page = document.getElementById("page");
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Lead capture failed.");
 
-      addMessage(
-        "assistant",
-        data.emailSent
-          ? "Your diagnostic brief was saved and sent to Conneen AI. I'll follow up from wiwyco@gmail.com."
-          : "Your diagnostic brief was saved. Email notification could not be sent, but the lead is stored for follow-up."
-      );
-      leadCaptureForm.hidden = true;
+      const thanksMessage = await getThankYouMessage(payload);
+      await playLeadThanks(thanksMessage);
     } catch (error) {
       addMessage(
         "assistant",
@@ -849,6 +939,80 @@ const page = document.getElementById("page");
       leadSubmitButton.disabled = false;
       leadSubmitButton.textContent = "Send brief";
       chatInput.focus();
+    }
+  });
+
+  leadDraftButton.addEventListener("click", async () => {
+    leadDraftButton.disabled = true;
+    leadDraftButton.textContent = "Drafting";
+
+    try {
+      const res = await fetch("/api/lead-draft", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ messages: getMessagesForApi() }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Draft failed.");
+
+      if (data.name && !leadNameInput.value.trim()) leadNameInput.value = data.name;
+      if (data.email && !leadEmailInput.value.trim()) leadEmailInput.value = data.email;
+      if (data.company && !leadCompanyInput.value.trim()) leadCompanyInput.value = data.company;
+      leadWorkflowInput.value = data.workflow || leadWorkflowInput.value;
+      leadWorkflowInput.focus();
+    } catch (error) {
+      addMessage(
+        "assistant",
+        error instanceof Error
+          ? error.message
+          : "I could not draft the inquiry fields. You can still type them manually."
+      );
+    } finally {
+      leadDraftButton.disabled = false;
+      leadDraftButton.textContent = "Draft from chat";
+    }
+  });
+
+  siteLeadForm.addEventListener("submit", async (event) => {
+    event.preventDefault();
+
+    const formData = new FormData(siteLeadForm);
+    const payload = {
+      source: "site_contact_form",
+      name: String(formData.get("name") || ""),
+      email: String(formData.get("email") || ""),
+      company: String(formData.get("company") || ""),
+      workflow: String(formData.get("workflow") || ""),
+      pagePath: window.location.pathname,
+    };
+
+    siteLeadSubmitButton.disabled = true;
+    siteLeadSubmitButton.textContent = "Sending";
+    siteLeadStatus.textContent = "";
+
+    try {
+      const res = await fetch("/api/leads", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Lead capture failed.");
+
+      siteLeadStatus.textContent = data.emailSent
+        ? "Workflow brief sent. Conneen AI will follow up from wiwyco@gmail.com."
+        : "Workflow brief saved. Email notification could not be sent, but the lead is stored.";
+      siteLeadForm.reset();
+    } catch (error) {
+      siteLeadStatus.textContent =
+        error instanceof Error
+          ? error.message
+          : "Could not send the workflow brief. Please email wiwyco@gmail.com directly.";
+    } finally {
+      siteLeadSubmitButton.disabled = false;
+      siteLeadSubmitButton.textContent = "Send workflow brief";
     }
   });
 

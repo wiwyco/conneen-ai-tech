@@ -12,6 +12,8 @@ type LeadRequest = {
   email?: unknown;
   company?: unknown;
   phone?: unknown;
+  workflow?: unknown;
+  source?: unknown;
   messages?: unknown;
   pagePath?: unknown;
 };
@@ -49,6 +51,19 @@ function cleanMessages(value: unknown): ClientMessage[] {
       content: m.content.trim().slice(0, MAX_MESSAGE_CHARS),
     }))
     .filter((m) => m.content);
+}
+
+function messagesFromSiteLead(body: LeadRequest | null): ClientMessage[] {
+  const workflow = cleanText(body?.workflow, MAX_MESSAGE_CHARS);
+
+  if (!workflow) return [];
+
+  return [
+    {
+      role: "user",
+      content: workflow,
+    },
+  ];
 }
 
 function classifyWorkflow(messages: ClientMessage[]): string {
@@ -117,6 +132,11 @@ async function insertLead(payload: Record<string, unknown>) {
   if (!response.ok) {
     const text = await response.text().catch(() => "");
     console.error("Supabase lead insert failed:", response.status, text);
+
+    if (response.status === 404 && text.includes("diagnostic_leads")) {
+      throw new Error("Supabase table diagnostic_leads is missing. Run supabase/diagnostic_leads.sql in the Supabase SQL editor, then retry.");
+    }
+
     throw new Error("Lead database insert failed.");
   }
 
@@ -195,20 +215,35 @@ export const POST: APIRoute = async ({ request }) => {
     }
 
     const messages = cleanMessages(body?.messages);
-    if (!messages.length) {
-      return new Response(JSON.stringify({ error: "A diagnostic transcript is required." }), {
+    const workflow = cleanText(body?.workflow, MAX_MESSAGE_CHARS);
+    const siteMessages = messages.length
+      ? [
+          ...messages,
+          ...(workflow
+            ? [
+                {
+                  role: "user" as const,
+                  content: `Submitted workflow brief: ${workflow}`,
+                },
+              ]
+            : []),
+        ]
+      : messagesFromSiteLead(body);
+
+    if (!siteMessages.length) {
+      return new Response(JSON.stringify({ error: "A workflow description is required." }), {
         status: 400,
         headers: { "Content-Type": "application/json" },
       });
     }
 
-    const workflowType = classifyWorkflow(messages);
-    const diagnosticSummary = buildDiagnosticSummary(messages, workflowType);
-    const transcript = formatTranscript(messages);
+    const workflowType = classifyWorkflow(siteMessages);
+    const diagnosticSummary = buildDiagnosticSummary(siteMessages, workflowType);
+    const transcript = formatTranscript(siteMessages);
 
     const leadPayload = {
       status: "new",
-      source: "workflow_diagnostic",
+      source: cleanText(body?.source, 80) || "workflow_diagnostic",
       name: cleanText(body?.name),
       email,
       company: cleanText(body?.company),
@@ -216,7 +251,7 @@ export const POST: APIRoute = async ({ request }) => {
       workflow_type: workflowType,
       workflow_summary: diagnosticSummary.workflowDescription,
       diagnostic_summary: diagnosticSummary,
-      transcript: messages,
+      transcript: siteMessages,
       user_agent: request.headers.get("user-agent"),
       page_path: cleanText(body?.pagePath, 500),
     };
@@ -230,9 +265,14 @@ export const POST: APIRoute = async ({ request }) => {
     });
   } catch (err) {
     console.error(err);
-    return new Response(JSON.stringify({ error: "Lead capture failed." }), {
+    return new Response(
+      JSON.stringify({
+        error: err instanceof Error ? err.message : "Lead capture failed.",
+      }),
+      {
       status: 500,
       headers: { "Content-Type": "application/json" },
-    });
+      }
+    );
   }
 };

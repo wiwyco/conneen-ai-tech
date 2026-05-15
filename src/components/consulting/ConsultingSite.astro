@@ -260,13 +260,27 @@
           </div>
         </div>
 
-        <div class="contact-card good-message">
-          <strong>Good first message</strong>
+        <form class="contact-card site-lead-form" id="site-lead-form">
+          <strong>Send a workflow brief</strong>
           <p>
-            "We spend X hours per week on Y. The inputs are A/B/C. The output is usually Z. The part that breaks most often is..."
+            A good first message: "We spend X hours per week on Y. The inputs are A/B/C. The output is usually Z. The part that breaks most often is..."
           </p>
-          <button class="site-button primary return-chat-trigger" type="button">Run diagnostic</button>
-        </div>
+          <div class="site-lead-fields">
+            <input name="name" type="text" placeholder="Name" autocomplete="name" />
+            <input name="email" type="email" placeholder="Email" autocomplete="email" required />
+            <input name="company" type="text" placeholder="Company" autocomplete="organization" />
+            <textarea
+              name="workflow"
+              placeholder="Describe one slow process, the tools/files involved, and what output your team needs."
+              required
+            ></textarea>
+          </div>
+          <div class="site-lead-actions">
+            <button class="site-button primary" id="site-lead-submit-button" type="submit">Send workflow brief</button>
+            <button class="site-button return-chat-trigger" type="button">Run diagnostic</button>
+          </div>
+          <p class="site-lead-status" id="site-lead-status" role="status" aria-live="polite"></p>
+        </form>
       </div>
     </section>
   </div>
