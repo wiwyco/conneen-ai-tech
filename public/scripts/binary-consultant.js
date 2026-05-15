@@ -670,12 +670,23 @@ const page = document.getElementById("page");
           }
         }
 
+        const textLeft = zone.startCol * state.cellW;
+        const textTop = zone.startRow * state.cellH;
+        const textWidth = textW * state.cellW;
+        const textHeight = textH * state.cellH;
+        const framePadX = state.isMobile ? state.cellW * 2.4 : state.cellW * 2.6;
+        const framePadY = state.isMobile ? state.cellH * 1.1 : state.cellH * 1.15;
+        const frameWidth = textWidth + framePadX * 2;
+        const frameHeight = textHeight + framePadY * 2;
+        const frameLeft = textLeft + textWidth / 2 - frameWidth / 2;
+        const frameTop = textTop + textHeight / 2 - frameHeight / 2;
+
         state.goSiteBox = {
           left: boxLeft * state.cellW,
-          frameLeft: boxLeft * state.cellW,
-          frameTop: (zone.startRow - 0.5) * state.cellH,
-          frameWidth: (boxRight - boxLeft + 1) * state.cellW,
-          frameHeight: 2 * state.cellH,
+          frameLeft,
+          frameTop,
+          frameWidth,
+          frameHeight,
           top: boxTop * state.cellH,
           width: (boxRight - boxLeft + 1) * state.cellW,
           height: (boxBottom - boxTop + 1) * state.cellH,
