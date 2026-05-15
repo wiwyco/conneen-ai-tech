@@ -161,7 +161,7 @@ body {
 
   .message {
     max-width: min(680px, 92%);
-    padding: 13px 15px;
+    padding: 8px 15px 9px;
     border: 1px solid rgba(17, 17, 17, 0.18);
     background: rgba(17, 17, 17, 0.045);
     color: rgba(17, 17, 17, 0.92);
@@ -1169,7 +1169,7 @@ body {
 
     .message {
       max-width: 94%;
-      padding: 10px 11px;
+      padding: 7px 11px 8px;
       font-size: 12px;
       line-height: 1.42;
     }
