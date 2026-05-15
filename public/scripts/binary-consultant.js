@@ -52,6 +52,7 @@ const page = document.getElementById("page");
     chatOffsetY: -12,
     goSiteVisible: false,
     goSiteBox: null,
+    goSiteFrameVisible: false,
     leadPaneOpen: false,
   };
 
@@ -652,11 +653,29 @@ const page = document.getElementById("page");
       const boxBottom = zone.startRow + textH + zone.padY - 1;
 
       if (zone.clickable) {
+        let isFullySettled = true;
+
+        if (zone.revealOnSettle) {
+          for (let boxRow = boxTop; boxRow <= boxBottom; boxRow++) {
+            for (let boxCol = boxLeft; boxCol <= boxRight; boxCol++) {
+              const boxIdx = boxRow * state.cols + boxCol;
+
+              if (!state.settled[boxIdx]) {
+                isFullySettled = false;
+                break;
+              }
+            }
+
+            if (!isFullySettled) break;
+          }
+        }
+
         state.goSiteBox = {
           left: boxLeft * state.cellW,
           top: boxTop * state.cellH,
           width: (boxRight - boxLeft + 1) * state.cellW,
           height: (boxBottom - boxTop + 1) * state.cellH,
+          frameVisible: isFullySettled,
         };
       }
 
@@ -836,15 +855,20 @@ const page = document.getElementById("page");
       }
     }
 
-    if (state.goSiteBox && state.mode !== "site" && state.mode !== "siteTransition") {
+    if (
+      state.goSiteBox?.frameVisible &&
+      state.mode !== "site" &&
+      state.mode !== "siteTransition"
+    ) {
       ctx.save();
       ctx.strokeStyle = "rgba(17, 17, 17, 0.55)";
       ctx.lineWidth = 1;
+      const inset = 1;
       ctx.strokeRect(
-        Math.round(state.goSiteBox.left) + 0.5,
-        Math.round(state.goSiteBox.top) + 0.5,
-        Math.round(state.goSiteBox.width),
-        Math.round(state.goSiteBox.height)
+        Math.round(state.goSiteBox.left) + inset + 0.5,
+        Math.round(state.goSiteBox.top) + inset + 0.5,
+        Math.round(state.goSiteBox.width) - inset * 2,
+        Math.round(state.goSiteBox.height) - inset * 2
       );
       ctx.restore();
     }
