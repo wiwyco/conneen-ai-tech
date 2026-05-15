@@ -2,6 +2,7 @@ const page = document.getElementById("page");
   const canvas = document.getElementById("binary-canvas");
   const ctx = canvas.getContext("2d", { alpha: true });
   const chatShell = document.getElementById("chat-shell");
+  const chatPanel = chatShell.querySelector(".chat-panel");
   const chatLog = document.getElementById("chat-log");
   const chatForm = document.getElementById("chat-form");
   const chatInput = document.getElementById("chat-input");
@@ -916,6 +917,7 @@ const page = document.getElementById("page");
     if (!text) return;
 
     addMessage("user", text);
+    chatPanel.classList.add("conversation-started");
     chatInput.value = "";
     sendButton.disabled = true;
     sendButton.textContent = "Thinking";
