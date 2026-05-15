@@ -151,10 +151,11 @@ body {
 
   .chat-log {
     overflow: auto;
-    padding: 20px;
+    padding: 30px 20px 20px;
     display: flex;
     flex-direction: column;
     gap: 14px;
+    align-items: flex-start;
     scrollbar-color: rgba(17, 17, 17, 0.35) transparent;
   }
 
@@ -1162,7 +1163,7 @@ body {
     }
 
     .chat-log {
-      padding: 12px;
+      padding: 16px 12px 12px;
       gap: 10px;
     }
 
