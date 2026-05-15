@@ -106,6 +106,7 @@ body {
       0 0 60px rgba(0, 0, 0, 0.08),
       0 32px 100px rgba(0, 0, 0, 0.16);
     backdrop-filter: blur(8px);
+    transition: grid-template-rows 560ms cubic-bezier(0.22, 1, 0.36, 1);
   }
 
   .chat-panel.conversation-started {
@@ -121,25 +122,36 @@ body {
       "form lead";
   }
 
+  .chat-shell.lead-open .chat-panel.conversation-started {
+    grid-template-rows: 0 1fr auto;
+  }
+
   .chat-shell.lead-open .chat-header {
     grid-area: header;
   }
 
   .chat-header {
+    max-height: 180px;
     padding: 18px 20px;
     border-bottom: 1px solid rgba(17, 17, 17, 0.18);
     overflow: hidden;
+    transform: translateY(0);
+    will-change: max-height, opacity, padding, transform;
     transition:
-      opacity 420ms ease,
-      padding 420ms ease,
-      border-color 420ms ease;
+      max-height 560ms cubic-bezier(0.22, 1, 0.36, 1),
+      opacity 360ms ease,
+      padding 560ms cubic-bezier(0.22, 1, 0.36, 1),
+      border-color 420ms ease,
+      transform 560ms cubic-bezier(0.22, 1, 0.36, 1);
   }
 
   .chat-panel.conversation-started .chat-header {
     opacity: 0;
+    max-height: 0;
     padding-top: 0;
     padding-bottom: 0;
     border-bottom-color: transparent;
+    transform: translateY(-34px);
   }
 
   .eyebrow {
@@ -1150,6 +1162,10 @@ body {
         "log"
         "lead"
         "form";
+    }
+
+    .chat-shell.lead-open .chat-panel.conversation-started {
+      grid-template-rows: 0 minmax(180px, 1fr) auto auto;
     }
 
     .chat-shell.lead-open .lead-capture {
