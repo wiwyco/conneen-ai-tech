@@ -14,6 +14,18 @@ const page = document.getElementById("page");
   const leadNameInput = document.getElementById("lead-name");
   const leadEmailInput = document.getElementById("lead-email");
   const leadCompanyInput = document.getElementById("lead-company");
+  const leadFields = leadCaptureForm.querySelector(".lead-fields");
+  const leadCaptureTitle = leadCaptureForm.querySelector(".lead-capture-title");
+  const leadCaptureCopy = leadCaptureForm.querySelector(".lead-capture-copy");
+  const leadAccountPanel = document.getElementById("lead-account-panel");
+  const leadInviteTokenInput = document.getElementById("lead-invite-token");
+  const leadAccountStatus = document.getElementById("lead-account-status");
+  const leadAccountEmailInput = document.getElementById("lead-account-email");
+  const leadAccountPasswordInput = document.getElementById("lead-account-password");
+  const leadAccountPasswordConfirmInput = document.getElementById("lead-account-password-confirm");
+  const leadCreateAccountButton = document.getElementById("lead-create-account-button");
+  const leadGoSiteButton = document.getElementById("lead-go-site-button");
+  const leadPortalLink = document.getElementById("lead-portal-link");
   const leadThanksMessage = document.getElementById("lead-thanks-message");
   const siteLeadForm = document.getElementById("site-lead-form");
   const siteLeadSubmitButton = document.getElementById("site-lead-submit-button");
@@ -24,6 +36,8 @@ const page = document.getElementById("page");
   const returnChatTriggers = document.querySelectorAll(".return-chat-trigger");
 
   const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const LEAD_PANE_MARKER = "[[OPEN_LEAD_PANE]]";
+  let visitorFirstName = "";
 
   const state = {
     dpr: 1,
@@ -348,6 +362,46 @@ const page = document.getElementById("page");
     state.borderRevealStartedAt = performance.now();
   }
 
+  function tokenFromInviteUrl(url) {
+    try {
+      const parsed = new URL(url, window.location.origin);
+      return parsed.searchParams.get("invite") || "";
+    } catch {
+      return "";
+    }
+  }
+
+  function showLeadAccountSetup(payload, provision) {
+    const inviteUrl = provision?.inviteUrl || "";
+    const inviteToken = tokenFromInviteUrl(inviteUrl);
+
+    leadFields.hidden = true;
+    leadAccountPanel.hidden = false;
+    leadCaptureTitle.textContent = "Create your client portal account";
+    leadCaptureCopy.textContent =
+      "Scout created a workspace from this conversation so you can track the project, requested files, and next steps before the first meeting.";
+    leadAccountEmailInput.value = payload.email || "";
+    leadInviteTokenInput.value = inviteToken;
+    leadAccountPasswordInput.value = "";
+    leadAccountPasswordConfirmInput.value = "";
+    leadPortalLink.href = inviteUrl || "/portal";
+    leadPortalLink.hidden = !inviteUrl;
+
+    if (provision?.inviteEmailSent) {
+      leadAccountStatus.textContent =
+        "The inquiry email was sent, and a portal invite was sent to your email. You can create your password here now.";
+    } else if (inviteUrl && inviteToken) {
+      leadAccountStatus.textContent =
+        "The inquiry was saved and Scout created your workspace. Email delivery is not configured locally, so this invite link is ready here.";
+    } else if (inviteUrl) {
+      leadAccountStatus.textContent =
+        "The inquiry was saved and Scout found an existing portal user. Use the invite link below to open the workspace.";
+    } else {
+      leadAccountStatus.textContent =
+        "The inquiry was saved. Scout could not create a portal invite, so Conneen AI will follow up by email.";
+    }
+  }
+
   async function getThankYouMessage(payload) {
     try {
       const res = await fetch("/api/lead-thanks", {
@@ -362,7 +416,15 @@ const page = document.getElementById("page");
       console.error(error);
     }
 
-    return "Thank you. Your diagnostic brief is saved, and Conneen AI will review the first useful pilot opportunity.";
+    if (payload.portalInviteEmailSent) {
+      return "Thank you. Scout saved your diagnostic brief, created your client workspace, and sent a portal invite to your email.";
+    }
+
+    if (payload.portalInviteUrl) {
+      return `Thank you. Scout saved your diagnostic brief and created your client workspace. Your local portal invite link is ${payload.portalInviteUrl}`;
+    }
+
+    return "Thank you. Scout saved your diagnostic brief, and Conneen AI will review the first useful pilot opportunity.";
   }
 
   async function playLeadThanks(message) {
@@ -883,9 +945,60 @@ const page = document.getElementById("page");
     requestAnimationFrame(draw);
   }
 
+  function setVisitorFirstName(name) {
+    const cleanName = name.trim().replace(/[^a-zA-Z'-]/g, "");
+    if (!cleanName) return;
+
+    visitorFirstName = cleanName.charAt(0).toUpperCase() + cleanName.slice(1);
+    if (leadNameInput && !leadNameInput.value.trim()) leadNameInput.value = visitorFirstName;
+  }
+
+  function extractFirstName(text) {
+    const normalized = text.trim();
+    const blacklist = new Set([
+      "a",
+      "an",
+      "at",
+      "from",
+      "getting",
+      "having",
+      "in",
+      "interested",
+      "looking",
+      "running",
+      "the",
+      "trying",
+      "using",
+      "we",
+      "with",
+      "working",
+    ]);
+    const patterns = [
+      /\b(?:my name is|name is|i am|i'm|im|this is)\s+([a-zA-Z][a-zA-Z'-]{1,24})\b/i,
+      /^([a-zA-Z][a-zA-Z'-]{1,24})(?:,|\s+from\b|\s+with\b|\s+at\b)/i,
+    ];
+
+    for (const pattern of patterns) {
+      const match = normalized.match(pattern);
+      const candidate = match?.[1]?.toLowerCase();
+      if (candidate && !blacklist.has(candidate)) return match[1];
+    }
+
+    return "";
+  }
+
+  function parseAssistantReply(text) {
+    const raw = String(text || "");
+    return {
+      shouldOpenLeadPane: raw.includes(LEAD_PANE_MARKER),
+      text: raw.replaceAll(LEAD_PANE_MARKER, "").trim(),
+    };
+  }
+
   function addMessage(role, text) {
     const div = document.createElement("div");
     div.className = `message ${role}`;
+    div.dataset.speaker = role === "user" ? visitorFirstName || "you" : "Scout";
     div.textContent = text;
     chatLog.appendChild(div);
     chatLog.scrollTop = chatLog.scrollHeight;
@@ -898,23 +1011,16 @@ const page = document.getElementById("page");
     }));
   }
 
-  function maybeShowLeadCapture() {
-    const userMessageCount = chatLog.querySelectorAll(".message.user").length;
-
-    if (userMessageCount >= 2 && leadCaptureForm.hidden) {
-      openLeadPane();
-      addMessage(
-        "assistant",
-        "I can fill out the inquiry pane on the right using what we covered. Use Draft from chat, then edit anything before sending."
-      );
-    }
-  }
-
   chatForm.addEventListener("submit", async (event) => {
     event.preventDefault();
 
     const text = chatInput.value.trim();
     if (!text) return;
+
+    if (!visitorFirstName) {
+      const firstName = extractFirstName(text);
+      if (firstName) setVisitorFirstName(firstName);
+    }
 
     addMessage("user", text);
     chatPanel.classList.add("conversation-started");
@@ -926,14 +1032,15 @@ const page = document.getElementById("page");
       const res = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ messages: getMessagesForApi() }),
+        body: JSON.stringify({ messages: getMessagesForApi(), visitorFirstName }),
       });
 
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Request failed.");
 
-      addMessage("assistant", data.reply || "I had trouble generating a response.");
-      maybeShowLeadCapture();
+      const reply = parseAssistantReply(data.reply || "I had trouble generating a response.");
+      addMessage("assistant", reply.text || "I had trouble generating a response.");
+      if (reply.shouldOpenLeadPane && leadCaptureForm.hidden) openLeadPane();
     } catch (error) {
       addMessage(
         "assistant",
@@ -962,7 +1069,11 @@ const page = document.getElementById("page");
     };
 
     leadSubmitButton.disabled = true;
-    leadSubmitButton.textContent = "Sending";
+    leadSubmitButton.textContent = "Sending inquiry";
+    addMessage(
+      "assistant",
+      "I'm sending the inquiry to Conneen AI now. After it is saved, I'll set up a client portal workspace from this conversation so you can track next steps."
+    );
 
     try {
       const res = await fetch("/api/leads", {
@@ -974,8 +1085,19 @@ const page = document.getElementById("page");
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Lead capture failed.");
 
-      const thanksMessage = await getThankYouMessage(payload);
-      await playLeadThanks(thanksMessage);
+      payload.portalInviteUrl = data.portalProvision?.inviteUrl || "";
+      payload.portalInviteEmailSent = Boolean(data.portalProvision?.inviteEmailSent);
+
+      const emailStatus = data.emailSent
+        ? "The inquiry email was successfully sent to Conneen AI."
+        : "The inquiry was saved for Conneen AI. Email notification is not configured locally, so I saved the details in the system.";
+      const hasPortalInvite = Boolean(data.portalProvision?.inviteUrl);
+      const accountStatus = hasPortalInvite
+        ? "I also created a portal workspace from this conversation. You can create your account in the panel on the right, or skip to the site."
+        : "I could not create the portal workspace automatically, so Conneen AI will follow up by email.";
+
+      addMessage("assistant", `${emailStatus} ${accountStatus}`);
+      if (hasPortalInvite) showLeadAccountSetup(payload, data.portalProvision);
     } catch (error) {
       addMessage(
         "assistant",
@@ -988,6 +1110,67 @@ const page = document.getElementById("page");
       leadSubmitButton.textContent = "Send brief";
       chatInput.focus();
     }
+  });
+
+  leadCreateAccountButton.addEventListener("click", async () => {
+    const token = leadInviteTokenInput.value.trim();
+    const email = leadAccountEmailInput.value.trim();
+    const password = leadAccountPasswordInput.value;
+    const passwordConfirm = leadAccountPasswordConfirmInput.value;
+
+    if (!token) {
+      leadAccountStatus.textContent = "This workspace invite is a direct link. Use the portal invite link below to continue.";
+      return;
+    }
+
+    if (password.length < 12) {
+      leadAccountStatus.textContent = "Please use a password with at least 12 characters.";
+      return;
+    }
+
+    if (password !== passwordConfirm) {
+      leadAccountStatus.textContent = "The password fields do not match.";
+      return;
+    }
+
+    leadCreateAccountButton.disabled = true;
+    leadCreateAccountButton.textContent = "Creating";
+    leadAccountStatus.textContent = "Creating your portal account...";
+
+    try {
+      const res = await fetch("/api/portal/accept-invite", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          token,
+          email,
+          displayName: leadNameInput.value.trim() || email,
+          password,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Account creation failed.");
+
+      addMessage(
+        "assistant",
+        "Your portal account is ready. I'll open your dashboard now, where the setup tour shows where I stored the project details from this conversation."
+      );
+      window.location.href = "/portal/dashboard";
+    } catch (error) {
+      leadAccountStatus.textContent =
+        error instanceof Error ? error.message : "I could not create the account. You can use the portal invite link instead.";
+    } finally {
+      leadCreateAccountButton.disabled = false;
+      leadCreateAccountButton.textContent = "Create account";
+    }
+  });
+
+  leadGoSiteButton.addEventListener("click", () => {
+    addMessage(
+      "assistant",
+      "No problem. Your inquiry is saved, and you can come back to the portal invite later from your email."
+    );
+    beginSiteTransition();
   });
 
   leadDraftButton.addEventListener("click", async () => {
@@ -1018,7 +1201,7 @@ const page = document.getElementById("page");
       );
     } finally {
       leadDraftButton.disabled = false;
-      leadDraftButton.textContent = "Draft from chat";
+      leadDraftButton.textContent = "Ask Scout to draft";
     }
   });
 
@@ -1049,9 +1232,13 @@ const page = document.getElementById("page");
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Lead capture failed.");
 
-      siteLeadStatus.textContent = data.emailSent
-        ? "Workflow brief sent. Conneen AI will follow up from wiwyco@gmail.com."
-        : "Workflow brief saved. Email notification could not be sent, but the lead is stored.";
+      siteLeadStatus.textContent = data.portalProvision?.inviteEmailSent
+        ? "Workflow brief saved. Scout created your workspace and sent a portal invite to your email."
+        : data.portalProvision?.inviteUrl
+          ? `Workflow brief saved. Scout created your workspace. Local invite link: ${data.portalProvision.inviteUrl}`
+          : data.emailSent
+            ? "Workflow brief sent. Conneen AI will follow up from wiwyco@gmail.com."
+            : "Workflow brief saved. Email notification could not be sent, but the lead is stored.";
       siteLeadForm.reset();
     } catch (error) {
       siteLeadStatus.textContent =

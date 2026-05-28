@@ -1,21 +1,26 @@
 ---
 ---
 
-<section class="chat-shell" id="chat-shell" aria-label="Conneen AI workflow diagnostic chat">
+<section class="chat-shell" id="chat-shell" aria-label="Scout, Conneen AI workflow diagnostic chat">
   <div class="chat-panel">
     <header class="chat-header">
-      <p class="eyebrow">AI pilot diagnostic</p>
-      <h1>Find the workflow AI should fix first.</h1>
+      <div class="chat-identity">
+        <img class="scout-icon" src="/assets/scout-wing.png" alt="Scout wing icon" />
+        <div>
+          <p class="eyebrow">Scout by Conneen AI</p>
+          <h1>Find the work weighing your team down.</h1>
+        </div>
+      </div>
     </header>
 
     <div class="chat-log" id="chat-log">
-      <div class="message assistant">I'm Conneen AI's workflow diagnostic assistant. Tell me one slow, repetitive, expensive, or error-prone process in your business. I'll help classify the opportunity, identify the likely tools/data involved, and shape it into a practical first pilot with human review where it matters.</div>
+      <div class="message assistant" data-speaker="Scout">I'm Scout, Conneen AI's workflow guide. I help growing businesses find the expensive, time-sucking work that weighs a team down, then shape a practical AI or software pilot with people still in control. At any point, I can help turn what we discuss into an inquiry for Conneen AI. To start, what should I call you, and what does your business do? Share only what you're comfortable sharing.</div>
     </div>
 
     <form class="lead-capture" id="lead-capture-form" hidden>
       <div>
-        <p class="lead-capture-title">Send this diagnostic to Conneen AI</p>
-        <p class="lead-capture-copy">I can draft this from the diagnostic, or you can edit it before sending.</p>
+        <p class="lead-capture-title">Send Scout's notes to Conneen AI</p>
+        <p class="lead-capture-copy">Scout can draft this from the conversation, or you can edit it before sending.</p>
       </div>
       <div class="lead-fields">
         <input id="lead-name" name="name" type="text" placeholder="Name" autocomplete="name" />
@@ -24,13 +29,34 @@
         <textarea
           id="lead-workflow"
           name="workflow"
-          placeholder="Workflow brief, tools/data involved, likely pilot, and human review points..."
+          placeholder="Scout's brief: costly task, tools/data involved, likely assist, and human review points..."
           required
         ></textarea>
         <div class="lead-actions">
-          <button id="lead-draft-button" type="button">Draft from chat</button>
+          <button id="lead-draft-button" type="button">Ask Scout to draft</button>
           <button id="lead-submit-button" type="submit">Send brief</button>
         </div>
+      </div>
+      <div class="lead-account-panel" id="lead-account-panel" hidden>
+        <input id="lead-invite-token" type="hidden" />
+        <p class="lead-account-status" id="lead-account-status"></p>
+        <label>
+          Username
+          <input id="lead-account-email" type="email" autocomplete="username" readonly />
+        </label>
+        <label>
+          Create password
+          <input id="lead-account-password" type="password" autocomplete="new-password" minlength="12" />
+        </label>
+        <label>
+          Confirm password
+          <input id="lead-account-password-confirm" type="password" autocomplete="new-password" minlength="12" />
+        </label>
+        <div class="lead-actions">
+          <button id="lead-create-account-button" type="button">Create account</button>
+          <button id="lead-go-site-button" type="button">No thanks, go to site</button>
+        </div>
+        <a class="lead-portal-link" id="lead-portal-link" href="/portal" hidden>Open portal invite link</a>
       </div>
     </form>
 

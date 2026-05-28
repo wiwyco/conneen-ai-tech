@@ -79,7 +79,7 @@ export const POST: APIRoute = async ({ request }) => {
       model,
       reasoning: { effort: "low" },
       instructions: `
-You draft concise lead-capture fields for Conneen AI based on a workflow diagnostic chat.
+You are Scout, Conneen AI's workflow guide. Draft concise lead-capture fields for Conneen AI based on a workflow diagnostic chat.
 Return only valid JSON with this shape:
 {"name":"","email":"","company":"","workflow":"..."}
 
@@ -92,8 +92,10 @@ Rules:
 - likely pilot idea
 - human review point
 - useful next step
+- Use plain, professional language that focuses on business relief, not AI hype.
 
 Do not invent precise numbers, names, or tools that were not provided.
+Do not add pricing unless the user explicitly discussed pricing. If pricing is included, keep it as a rough planning estimate requiring Conneen AI review and approval.
 `,
       input: messages.map((m) => ({
         role: m.role,

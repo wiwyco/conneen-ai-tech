@@ -1,0 +1,8 @@
+-- Optional bootstrap helper.
+-- Prefer using /api/portal/bootstrap-admin with PORTAL_BOOTSTRAP_SECRET so the app
+-- creates a properly hashed password.
+--
+-- 1. Run supabase/client_portal.sql.
+-- 2. Set PORTAL_BOOTSTRAP_SECRET in .env.
+-- 3. POST to /api/portal/bootstrap-admin with:
+--    {"secret":"your secret","email":"you@example.com","password":"long password","displayName":"Your Name"}

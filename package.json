@@ -7,10 +7,18 @@
     "dev": "astro dev",
     "build": "astro build",
     "preview": "astro preview",
-    "astro": "astro"
+    "astro": "astro",
+    "evaluate:scout": "node scripts/evaluate-scout.mjs",
+    "evaluate:scout-account": "node scripts/evaluate-scout-account-creation.mjs",
+    "test:meeting": "node scripts/test-meeting-automation.mjs",
+    "test:zoom-oauth": "node scripts/test-zoom-oauth.mjs",
+    "test:zoom-scout-voice": "node scripts/test-zoom-scout-voice-assistant.mjs",
+    "scout:voice-options": "node scripts/generate-scout-voice-options.mjs",
+    "scout:rtms": "node scripts/scout-rtms-listener.mjs"
   },
   "dependencies": {
     "@astrojs/vercel": "latest",
+    "@zoom/meetingsdk": "^6.0.2",
     "astro": "latest",
     "openai": "latest"
   },

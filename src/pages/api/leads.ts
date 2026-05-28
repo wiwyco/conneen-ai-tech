@@ -1,4 +1,5 @@
 import type { APIRoute } from "astro";
+import { provisionPortalFromLead } from "../../lib/portal/provisioning";
 
 export const prerender = false;
 
@@ -20,6 +21,7 @@ type LeadRequest = {
 
 const MAX_MESSAGES = 18;
 const MAX_MESSAGE_CHARS = 2200;
+const EMAIL_TIMEOUT_MS = 8000;
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 function getEnv(name: string): string | undefined {
@@ -147,9 +149,11 @@ async function insertLead(payload: Record<string, unknown>) {
 async function sendLeadEmail({
   lead,
   transcript,
+  portalProvision,
 }: {
   lead: Record<string, any>;
   transcript: string;
+  portalProvision?: Record<string, any> | null;
 }): Promise<boolean> {
   const resendApiKey = getEnv("RESEND_API_KEY");
   const to = getEnv("LEAD_NOTIFY_EMAIL") || "wiwyco@gmail.com";
@@ -173,33 +177,53 @@ async function sendLeadEmail({
       <p><strong>Workflow type:</strong> ${escapeHtml(lead.workflow_type || "Not classified")}</p>
       <p><strong>Workflow summary:</strong><br>${escapeHtml(lead.workflow_summary || "")}</p>
       <p><strong>Latest diagnostic guidance:</strong><br>${escapeHtml(summary.latestAssistantSummary || "")}</p>
+      ${
+        portalProvision
+          ? `<h3>Portal workspace</h3>
+             <p><strong>Client ID:</strong> ${escapeHtml(portalProvision.clientId || "")}</p>
+             <p><strong>Project ID:</strong> ${escapeHtml(portalProvision.projectId || "Not created")}</p>
+             <p><strong>Invite sent:</strong> ${portalProvision.inviteEmailSent ? "Yes" : "No"}</p>
+             <p><strong>Invite link:</strong><br>${escapeHtml(portalProvision.inviteUrl || "")}</p>`
+          : ""
+      }
       <h3>Transcript</h3>
       <pre style="white-space:pre-wrap;background:#f5f5f5;padding:16px;border:1px solid #ddd">${escapeHtml(transcript)}</pre>
     </div>
   `;
 
-  const response = await fetch("https://api.resend.com/emails", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${resendApiKey}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      from,
-      to,
-      subject,
-      html,
-      reply_to: lead.email,
-    }),
-  });
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), EMAIL_TIMEOUT_MS);
 
-  if (!response.ok) {
-    const text = await response.text().catch(() => "");
-    console.error("Resend lead email failed:", response.status, text);
+  try {
+    const response = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      signal: controller.signal,
+      headers: {
+        Authorization: `Bearer ${resendApiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        from,
+        to,
+        subject,
+        html,
+        reply_to: lead.email,
+      }),
+    });
+
+    if (!response.ok) {
+      const text = await response.text().catch(() => "");
+      console.error("Resend lead email failed:", response.status, text);
+      return false;
+    }
+
+    return true;
+  } catch (error) {
+    console.error("Resend lead email failed:", error);
     return false;
+  } finally {
+    clearTimeout(timeout);
   }
-
-  return true;
 }
 
 export const POST: APIRoute = async ({ request }) => {
@@ -257,9 +281,22 @@ export const POST: APIRoute = async ({ request }) => {
     };
 
     const lead = await insertLead(leadPayload);
-    const emailSent = await sendLeadEmail({ lead: lead || leadPayload, transcript });
+    let portalProvision: Record<string, any> | null = null;
+    let portalProvisionError: string | null = null;
 
-    return new Response(JSON.stringify({ ok: true, leadId: lead?.id, emailSent }), {
+    try {
+      portalProvision = await provisionPortalFromLead({
+        ...(lead || leadPayload),
+        transcript: siteMessages,
+      } as any);
+    } catch (error) {
+      portalProvisionError = error instanceof Error ? error.message : "Portal provisioning failed.";
+      console.error("Portal provisioning failed:", error);
+    }
+
+    const emailSent = await sendLeadEmail({ lead: lead || leadPayload, transcript, portalProvision });
+
+    return new Response(JSON.stringify({ ok: true, leadId: lead?.id, emailSent, portalProvision, portalProvisionError }), {
       status: 200,
       headers: { "Content-Type": "application/json" },
     });

@@ -1,0 +1,561 @@
+---
+---
+
+<main class="portal-app" data-portal-app data-portal-mode="dashboard">
+  <section class="portal-shell">
+    <aside class="portal-sidebar">
+      <div>
+        <p class="eyebrow">Conneen AI</p>
+        <h2 data-user-name>Portal</h2>
+      </div>
+      <button class="secondary mobile-nav-toggle" type="button" data-mobile-nav-toggle>Menu</button>
+      <nav class="portal-nav">
+        <button data-nav="dashboard" class="active">Dashboard</button>
+        <button data-nav="documents">Documents</button>
+        <button data-nav="projects">Projects</button>
+        <button data-nav="knowledge">Knowledge</button>
+        <button data-nav="work">Work</button>
+        <button data-nav="support">Support</button>
+        <button data-nav="ai">Scout AI</button>
+        <button data-nav="admin" data-admin-only hidden>Admin</button>
+      </nav>
+      <button class="secondary" data-logout>Log out</button>
+    </aside>
+
+    <section class="portal-main">
+      <header class="portal-topbar">
+        <div>
+          <p class="eyebrow" data-active-role>Workspace</p>
+          <h1 data-active-title>Dashboard</h1>
+          <p class="page-subtitle" data-active-subtitle>Your current project health, next actions, and recent workspace movement.</p>
+        </div>
+        <div class="topbar-actions">
+          <select data-client-picker hidden></select>
+          <input data-global-search type="search" placeholder="Search workspace" />
+        </div>
+      </header>
+
+      <div class="portal-notice" data-portal-status></div>
+      <div class="toast-region" data-toast-region aria-live="polite" aria-atomic="true"></div>
+
+      <section class="portal-view active" data-section="dashboard">
+        <section class="executive-grid" data-executive-summary></section>
+        <div class="metric-grid" data-metrics></div>
+        <section class="portal-panel next-steps-panel">
+          <div class="panel-heading"><h2>Next Steps</h2></div>
+          <div class="next-steps-list" data-next-steps></div>
+        </section>
+        <section class="portal-panel tour-panel">
+          <div class="panel-heading"><h2>Your Setup Tour</h2></div>
+          <div class="tour-list" data-tour-steps></div>
+        </section>
+        <div class="two-column">
+          <section class="portal-panel">
+            <div class="panel-heading"><h2>Recent Activity</h2></div>
+            <div class="timeline" data-timeline></div>
+          </section>
+          <section class="portal-panel">
+            <div class="panel-heading"><h2>Open Tasks</h2></div>
+            <div data-task-summary></div>
+          </section>
+        </div>
+      </section>
+
+      <section class="portal-view" data-section="documents">
+        <section class="document-library" data-document-library>
+          <div class="library-commandbar">
+            <div class="library-actions">
+              <button type="button" data-document-upload-trigger>Upload</button>
+              <button class="secondary" type="button" data-folder-toggle>New folder</button>
+            </div>
+            <form class="folder-create-form" data-folder-form hidden>
+              <input name="name" type="text" placeholder="Folder name" autocomplete="off" />
+              <button type="submit">Create</button>
+            </form>
+          </div>
+
+          <form data-upload-form hidden>
+            <input name="title" type="hidden" />
+            <input name="category" type="hidden" value="general" />
+            <input name="visibility" type="hidden" value="shared" />
+            <input name="file" type="file" multiple />
+          </form>
+
+          <div class="library-breadcrumbs" data-document-breadcrumbs></div>
+          <div class="document-location">
+            <div>
+              <p class="eyebrow">Current location</p>
+              <h2 data-document-location-title>Documents</h2>
+            </div>
+            <button class="link-button" type="button" data-folder-open="">Root folder</button>
+          </div>
+
+          <div class="document-upload-requests" data-document-upload-requests></div>
+
+          <div class="library-dropzone" data-document-dropzone>
+            <div class="library-table" role="table" aria-label="Document library">
+              <div class="library-row library-header" role="row">
+                <span>Name</span>
+                <span>Type</span>
+                <span>Modified</span>
+                <span>Size</span>
+              </div>
+              <div data-record-list="documents"></div>
+            </div>
+          </div>
+        </section>
+      </section>
+
+      <section class="portal-view" data-section="projects">
+        <section class="project-workspace">
+          <div class="project-commandbar">
+            <label>
+              Project
+              <select data-project-picker></select>
+            </label>
+            <button type="button" data-project-scout-open>Create new project with Scout</button>
+          </div>
+
+          <div class="project-summary" data-project-summary></div>
+
+          <div class="project-dashboard" data-project-dashboard>
+            <section class="portal-panel project-section">
+              <div class="panel-heading"><h2>Milestones</h2></div>
+              <div data-project-list="milestones"></div>
+            </section>
+            <section class="portal-panel project-section">
+              <div class="panel-heading"><h2>Quote / Estimate History</h2></div>
+              <div data-project-list="estimates"></div>
+            </section>
+            <section class="portal-panel project-section">
+              <div class="panel-heading"><h2>Milestone Payments</h2></div>
+              <div data-project-list="payments"></div>
+            </section>
+            <section class="portal-panel project-section">
+              <div class="panel-heading"><h2>Invoices</h2></div>
+              <div data-project-list="invoices"></div>
+            </section>
+            <section class="portal-panel project-section">
+              <div class="panel-heading"><h2>Contracts / SOWs</h2></div>
+              <div data-project-list="contracts"></div>
+            </section>
+          </div>
+        </section>
+      </section>
+
+      <section class="portal-view" data-section="knowledge">
+        <section class="knowledge-library">
+          <div class="knowledge-commandbar">
+            <div>
+              <p class="eyebrow">Scout Knowledge</p>
+              <h2>Knowledge Library</h2>
+            </div>
+            <button type="button" data-knowledge-add>+ Add knowledge</button>
+          </div>
+          <div class="knowledge-table" role="table" aria-label="Scout knowledge library">
+            <div class="knowledge-row knowledge-header" role="row">
+              <span>Title</span>
+              <span>Type</span>
+              <span>Created</span>
+            </div>
+            <div data-knowledge-list></div>
+          </div>
+        </section>
+      </section>
+
+      <section class="portal-view" data-section="work">
+        <section class="work-workspace">
+          <div class="work-commandbar">
+            <div class="work-tabs" role="tablist" aria-label="Work views">
+              <button class="active" type="button" data-work-tab="tasks">Tasks</button>
+              <button class="secondary" type="button" data-work-tab="stories">User stories</button>
+            </div>
+            <label>
+              Project
+              <select data-work-project-filter></select>
+            </label>
+            <button type="button" data-task-create-open data-admin-only hidden>Admin: Create task</button>
+          </div>
+
+          <section class="work-tab-panel active" data-work-panel="tasks">
+            <div class="task-board" data-task-board></div>
+          </section>
+
+          <section class="work-tab-panel" data-work-panel="stories">
+            <div class="story-list" data-story-list></div>
+          </section>
+        </section>
+      </section>
+
+      <section class="portal-view" data-section="support">
+        <section class="support-workspace">
+          <div class="support-grid">
+            <form class="portal-panel meeting-scheduler" data-meeting-form>
+              <div class="panel-heading">
+                <h2>Schedule a Meeting</h2>
+                <p>Available Monday-Friday, 2:00 PM-9:00 PM Alaska time.</p>
+              </div>
+              <label>
+                Date
+                <input name="meeting_date" type="date" data-meeting-date required />
+              </label>
+              <div class="slot-list" data-meeting-slots></div>
+              <input name="event_at" type="hidden" data-meeting-event-at />
+              <label>
+                Meeting title
+                <input name="title" value="Project meeting" required />
+              </label>
+              <label>
+                Project
+                <select name="project_id" data-meeting-project-select></select>
+              </label>
+              <label>
+                Notes
+                <textarea name="notes" placeholder="What should we cover?"></textarea>
+              </label>
+              <button type="submit">Schedule meeting</button>
+            </form>
+
+            <section class="portal-panel">
+              <div class="panel-heading"><h2>Upcoming Meetings</h2></div>
+              <div class="upcoming-list" data-upcoming-meetings></div>
+            </section>
+          </div>
+
+          <section class="portal-panel">
+            <div class="panel-heading"><h2>Timeline</h2></div>
+            <div class="support-timeline" data-support-timeline></div>
+          </section>
+        </section>
+      </section>
+
+      <section class="portal-view" data-section="ai">
+        <div class="two-column">
+          <form class="portal-panel" data-ai-form>
+            <h2>Client Scout</h2>
+            <label>
+              Mode
+              <select name="mode">
+                <option value="client_qa">Document and history Q&A</option>
+                <option value="client_summary">Client summary</option>
+                <option value="client_update">Client-facing update</option>
+                <option value="internal_next_actions">Internal next actions</option>
+                <option value="scope_draft">Scope draft</option>
+                <option value="meeting_prep">Meeting prep</option>
+                <option value="followup_email">Follow-up email</option>
+                <option value="data_readiness_score">Data readiness score</option>
+                <option value="project_health_score">Project health score</option>
+                <option value="client_health_score">Client health score</option>
+              </select>
+            </label>
+            <label>
+              Request
+              <textarea name="prompt" placeholder="Ask about this client's documents, history, risks, next actions, or project state..." required></textarea>
+            </label>
+            <label class="inline-check">
+              <input name="save" type="checkbox" />
+              Save result as internal knowledge
+            </label>
+            <button type="submit">Ask Scout</button>
+          </form>
+          <section class="portal-panel">
+            <h2>AI Result</h2>
+            <pre class="ai-output" data-ai-output></pre>
+          </section>
+        </div>
+      </section>
+
+      <section class="portal-view" data-section="admin" data-admin-only hidden>
+        <div class="metric-grid" data-admin-metrics></div>
+        <div class="two-column">
+          <form class="portal-panel" data-client-form>
+            <h2>Create Client</h2>
+            <label>Name <input name="name" required /></label>
+            <label>Industry <input name="industry" /></label>
+            <label>Primary contact <input name="primary_contact_name" /></label>
+            <label>Contact email <input name="primary_contact_email" type="email" /></label>
+            <button type="submit">Create client</button>
+          </form>
+          <form class="portal-panel" data-user-form>
+            <h2>Invite User</h2>
+            <label>Email <input name="email" type="email" required /></label>
+            <label>Name <input name="displayName" required /></label>
+            <label>Role
+              <select name="role">
+                <option value="client_owner">Client owner</option>
+                <option value="client_member">Client member</option>
+                <option value="conneen_collaborator">Conneen collaborator</option>
+                <option value="admin">Admin</option>
+              </select>
+            </label>
+            <button type="submit">Create invite</button>
+            <textarea data-invite-output readonly></textarea>
+          </form>
+        </div>
+        <section class="portal-panel">
+          <h2>Clients</h2>
+          <div data-admin-clients></div>
+        </section>
+        <div class="record-grid">
+          <div data-record-panel="admin_notes"></div>
+          <div data-record-panel="followup_reminders"></div>
+          <div data-record-panel="scout_transcripts"></div>
+          <div data-record-panel="roi_notes"></div>
+          <div data-record-panel="change_requests"></div>
+        </div>
+      </section>
+    </section>
+  </section>
+
+  <section class="project-scout" data-project-scout hidden>
+    <header>
+      <div>
+        <p class="eyebrow">Scout</p>
+        <h2>New Project Setup</h2>
+      </div>
+      <button class="link-button" type="button" data-project-scout-close>Close</button>
+    </header>
+    <div class="project-scout-log" data-project-scout-log></div>
+    <form class="project-scout-form" data-project-scout-form>
+      <textarea name="message" placeholder="Tell Scout what you want to build, goals, timeline, budget sensitivity, and known milestones..." required></textarea>
+      <div class="project-scout-actions">
+        <button type="submit">Send</button>
+        <button class="secondary" type="button" data-project-scout-create>Create project</button>
+      </div>
+    </form>
+  </section>
+
+  <section class="modal-backdrop" data-knowledge-modal hidden>
+    <form class="knowledge-modal" data-knowledge-form>
+      <header>
+        <div>
+          <p class="eyebrow">Scout Knowledge</p>
+          <h2>Add knowledge</h2>
+        </div>
+        <button class="link-button" type="button" data-knowledge-close>Close</button>
+      </header>
+      <label>
+        Type of knowledge
+        <select name="knowledgeType" data-knowledge-type></select>
+      </label>
+      <div class="knowledge-fields" data-knowledge-fields></div>
+      <footer>
+        <button class="secondary" type="button" data-knowledge-cancel>Cancel</button>
+        <button type="submit">Save knowledge</button>
+      </footer>
+    </form>
+  </section>
+
+  <section class="modal-backdrop" data-knowledge-detail-modal hidden>
+    <article class="knowledge-modal knowledge-detail-modal">
+      <header>
+        <div>
+          <p class="eyebrow" data-knowledge-detail-type>Scout Knowledge</p>
+          <h2 data-knowledge-detail-title>Knowledge</h2>
+          <p class="detail-date" data-knowledge-detail-date></p>
+        </div>
+        <button class="link-button" type="button" data-knowledge-detail-close>Close</button>
+      </header>
+      <div class="knowledge-detail-fields" data-knowledge-detail-fields></div>
+    </article>
+  </section>
+
+  <section class="modal-backdrop" data-task-modal hidden>
+    <form class="knowledge-modal task-modal" data-task-form>
+      <header>
+        <div>
+          <p class="eyebrow">Work</p>
+          <h2>Create task</h2>
+        </div>
+        <button class="link-button" type="button" data-task-close>Close</button>
+      </header>
+      <div class="task-form-grid">
+        <label>
+          Title
+          <input name="title" required />
+        </label>
+        <label>
+          Type
+          <select name="task_type">
+            <option value="development">Development</option>
+            <option value="open_question">Open question</option>
+            <option value="data_request">Data request</option>
+            <option value="data_submission">Data submission</option>
+            <option value="system_access">System access</option>
+            <option value="onboarding">Onboarding task</option>
+            <option value="customer_questions">Customer questions</option>
+            <option value="meeting_action">Meeting action item</option>
+            <option value="support_ticket">Support ticket</option>
+            <option value="training_material">Training material development</option>
+            <option value="handover_package">Handover package development</option>
+          </select>
+        </label>
+        <label>
+          Project
+          <select name="project_id" data-task-project-select></select>
+        </label>
+        <label>
+          User story
+          <select name="user_story_id" data-task-story-select></select>
+        </label>
+        <label>
+          Assign to
+          <select name="assigned_to" data-task-user-select></select>
+        </label>
+        <label>
+          Expected hours
+          <input name="expected_hours" type="number" min="0" step="0.25" />
+        </label>
+        <label class="wide">
+          Description
+          <textarea name="description" required></textarea>
+        </label>
+        <label class="wide">
+          Success metrics
+          <textarea name="success_metrics"></textarea>
+        </label>
+        <label class="wide">
+          Risks
+          <textarea name="risks"></textarea>
+        </label>
+        <label class="wide">
+          Customer form JSON
+          <textarea name="form_schema" placeholder='{"title":"Questions for Scout","intro":"Help Scout complete setup.","fields":[{"name":"answer","label":"What should Scout know?","type":"textarea","required":true}]}'></textarea>
+        </label>
+        <label class="wide">
+          Upload requests JSON
+          <textarea name="upload_items" placeholder='[{"id":"sample_report","title":"Sample report export","description":"Upload a representative report or CSV Scout can inspect.","category":"sample data"}]'></textarea>
+        </label>
+        <label>
+          Due date
+          <input name="due_date" type="date" />
+        </label>
+        <label>
+          Visibility
+          <select name="visibility">
+            <option value="shared">Client visible</option>
+            <option value="internal">Internal only</option>
+          </select>
+        </label>
+      </div>
+      <footer>
+        <button class="secondary" type="button" data-task-cancel>Cancel</button>
+        <button type="submit">Create task</button>
+      </footer>
+    </form>
+  </section>
+
+  <section class="modal-backdrop" data-task-detail-modal hidden>
+    <article class="knowledge-modal task-detail-modal">
+      <header>
+        <div>
+          <p class="eyebrow" data-task-detail-type>Task</p>
+          <h2 data-task-detail-title>Task details</h2>
+          <p class="detail-date" data-task-detail-meta></p>
+        </div>
+        <button class="link-button" type="button" data-task-detail-close>Close</button>
+      </header>
+      <div class="knowledge-detail-fields" data-task-detail-fields></div>
+      <footer data-task-detail-actions></footer>
+    </article>
+  </section>
+
+  <section class="modal-backdrop" data-task-form-modal hidden>
+    <form class="knowledge-modal task-answer-modal" data-task-answer-form>
+      <header>
+        <div>
+          <p class="eyebrow">Scout question form</p>
+          <h2 data-task-form-title>Complete task</h2>
+          <p class="detail-date" data-task-form-intro></p>
+        </div>
+        <button class="link-button" type="button" data-task-form-close>Close</button>
+      </header>
+      <div class="knowledge-fields" data-task-form-fields></div>
+      <footer>
+        <button class="secondary" type="button" data-task-form-cancel>Cancel</button>
+        <button type="submit">Submit to Scout</button>
+      </footer>
+    </form>
+  </section>
+
+  <section class="modal-backdrop" data-task-upload-modal hidden>
+    <article class="knowledge-modal task-upload-modal">
+      <header>
+        <div>
+          <p class="eyebrow">Document request</p>
+          <h2 data-task-upload-title>Upload documents</h2>
+          <p class="detail-date" data-task-upload-intro></p>
+        </div>
+        <button class="link-button" type="button" data-task-upload-close>Close</button>
+      </header>
+      <div class="task-upload-list" data-task-upload-items></div>
+    </article>
+  </section>
+
+  <section class="modal-backdrop" data-meeting-scout-modal hidden>
+    <article class="knowledge-modal meeting-scout-modal">
+      <header>
+        <div>
+          <p class="eyebrow">Scout meeting notes</p>
+          <h2 data-meeting-scout-title>Meeting notes</h2>
+          <p class="detail-date" data-meeting-scout-meta></p>
+        </div>
+        <button class="link-button" type="button" data-meeting-scout-close>Close</button>
+      </header>
+      <div class="meeting-scout-grid">
+        <section>
+          <h3>Live response</h3>
+          <div class="meeting-artifact" data-meeting-scout-live-response></div>
+        </section>
+        <section>
+          <h3>Notes</h3>
+          <div class="meeting-artifact" data-meeting-scout-notes></div>
+        </section>
+        <section>
+          <h3>Key takeaways</h3>
+          <div class="meeting-artifact" data-meeting-scout-takeaways></div>
+        </section>
+        <section>
+          <h3>Draft deliverables</h3>
+          <div class="meeting-artifact" data-meeting-scout-deliverables></div>
+        </section>
+      </div>
+      <section class="meeting-response-log">
+        <h3>Scout response log</h3>
+        <div data-meeting-scout-response-log></div>
+      </section>
+      <form class="meeting-transcript-form" data-meeting-transcript-form>
+        <input name="eventId" type="hidden" />
+        <label>
+          Speaker
+          <input name="speaker" placeholder="Priya" />
+        </label>
+        <label>
+          Live transcript update
+          <textarea name="text" placeholder="Paste or stream the latest thing said in the meeting..."></textarea>
+        </label>
+        <footer>
+          <button class="secondary" type="button" data-meeting-scout-refresh>Refresh Scout notes</button>
+          <button type="submit">Add transcript update</button>
+        </footer>
+      </form>
+    </article>
+  </section>
+
+  <section class="modal-backdrop" data-project-detail-modal hidden>
+    <article class="knowledge-modal project-detail-modal">
+      <header>
+        <div>
+          <p class="eyebrow" data-project-detail-type>Project record</p>
+          <h2 data-project-detail-title>Project record</h2>
+          <p class="detail-date" data-project-detail-meta></p>
+        </div>
+        <button class="link-button" type="button" data-project-detail-close>Close</button>
+      </header>
+      <div class="knowledge-detail-fields" data-project-detail-fields></div>
+    </article>
+  </section>
+</main>
+
+<link rel="stylesheet" href="/styles/client-portal.css" />
+<script type="module" src="/scripts/client-portal.js"></script>

@@ -1,0 +1,102 @@
+---
+---
+
+<main class="portal-app" data-portal-app data-portal-mode="login">
+  <section class="portal-login">
+    <div class="login-copy">
+      <p class="eyebrow">Conneen AI Client Portal</p>
+      <h1>Shared project memory, documents, and next actions.</h1>
+    </div>
+
+    <div class="auth-panel-wrap">
+      <form class="portal-panel login-form" data-auth-panel="login" data-login-form>
+        <h2>Log in</h2>
+        <label>
+          Email
+          <input name="email" type="email" autocomplete="email" required />
+        </label>
+        <label>
+          Password
+          <input name="password" type="password" autocomplete="current-password" required />
+        </label>
+        <button type="submit">Log in</button>
+        <p class="form-status" data-login-status></p>
+        <div class="auth-actions">
+          <button class="link-button" type="button" data-auth-mode="invite">Accept invite to create account</button>
+          <button class="link-button" type="button" data-auth-mode="help">Reset username/password/help</button>
+        </div>
+      </form>
+
+      <form class="portal-panel invite-form" data-auth-panel="invite" data-invite-accept-form hidden style="display:none">
+        <h2>Accept invite</h2>
+        <input name="token" type="hidden" />
+        <label>
+          Invite token
+          <input name="tokenVisible" type="text" autocomplete="off" data-invite-token-visible />
+        </label>
+        <label>
+          Email
+          <input name="email" type="email" autocomplete="email" required />
+        </label>
+        <label>
+          Display name
+          <input name="displayName" type="text" autocomplete="name" required />
+        </label>
+        <label>
+          New password
+          <input name="password" type="password" autocomplete="new-password" minlength="12" required />
+        </label>
+        <button type="submit">Create account</button>
+        <p class="form-status" data-invite-status></p>
+        <div class="auth-actions">
+          <button class="link-button" type="button" data-auth-mode="login">Back to login</button>
+          <button class="link-button" type="button" data-auth-mode="help">Reset username/password/help</button>
+        </div>
+      </form>
+
+      <form class="portal-panel help-form" data-auth-panel="help" data-access-link-form hidden style="display:none">
+        <h2>Account help</h2>
+        <p class="help-copy">Your username is your email address. Enter it below to create a local reset or magic-login link.</p>
+        <label>
+          Email
+          <input name="email" type="email" autocomplete="email" required />
+        </label>
+        <label>
+          Help type
+          <select name="mode">
+            <option value="reset">Reset password</option>
+            <option value="magic">Magic login link</option>
+          </select>
+        </label>
+        <button type="submit">Create help link</button>
+        <textarea data-access-link-output readonly></textarea>
+        <p class="form-status" data-access-link-status></p>
+        <div class="auth-actions">
+          <button class="link-button" type="button" data-auth-mode="login">Back to login</button>
+          <button class="link-button" type="button" data-auth-mode="invite">Accept invite to create account</button>
+        </div>
+      </form>
+
+      <form class="portal-panel help-form" data-auth-panel="reset" data-reset-password-form hidden style="display:none">
+        <h2>Set new password</h2>
+        <input name="token" type="hidden" />
+        <label>
+          Email
+          <input name="email" type="email" autocomplete="email" required />
+        </label>
+        <label>
+          New password
+          <input name="password" type="password" autocomplete="new-password" minlength="12" required />
+        </label>
+        <button type="submit">Reset password</button>
+        <p class="form-status" data-reset-password-status></p>
+        <div class="auth-actions">
+          <button class="link-button" type="button" data-auth-mode="login">Back to login</button>
+        </div>
+      </form>
+    </div>
+  </section>
+</main>
+
+<link rel="stylesheet" href="/styles/client-portal.css" />
+<script type="module" src="/scripts/client-portal.js"></script>

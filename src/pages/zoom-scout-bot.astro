@@ -1,0 +1,799 @@
+---
+export const prerender = false;
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Scout Zoom Bot</title>
+    <style>
+      :root {
+        color-scheme: light;
+        --ink: #101113;
+        --muted: #62666d;
+        --line: #dedbd4;
+        --paper: #f7f5f0;
+        --panel: #ffffff;
+        --teal: #176a75;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        background: var(--paper);
+        color: var(--ink);
+        font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      }
+
+      .shell {
+        display: grid;
+        grid-template-columns: minmax(360px, 1fr) 420px;
+        min-height: 100vh;
+      }
+
+      #zoom-root {
+        min-height: 100vh;
+        background: #111315;
+      }
+
+      .console {
+        border-left: 1px solid var(--line);
+        background: var(--panel);
+        padding: 24px;
+        overflow: auto;
+      }
+
+      .eyebrow {
+        color: var(--teal);
+        font-size: 13px;
+        font-weight: 800;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+      }
+
+      h1 {
+        margin: 10px 0 6px;
+        font-size: 32px;
+        line-height: 1;
+      }
+
+      p {
+        color: var(--muted);
+        line-height: 1.45;
+      }
+
+      button,
+      input,
+      textarea {
+        border: 1px solid var(--line);
+        border-radius: 6px;
+        font: inherit;
+      }
+
+      button {
+        background: #0d0d0f;
+        color: #fff;
+        cursor: pointer;
+        padding: 12px 16px;
+      }
+
+      button.secondary {
+        background: #fff;
+        color: var(--ink);
+      }
+
+      button:disabled {
+        cursor: not-allowed;
+        opacity: 0.5;
+      }
+
+      textarea,
+      input {
+        display: block;
+        width: 100%;
+        padding: 11px 12px;
+        margin-top: 8px;
+      }
+
+      label {
+        display: block;
+        margin-top: 16px;
+        color: var(--muted);
+        font-size: 14px;
+        font-weight: 700;
+      }
+
+      .actions {
+        display: flex;
+        gap: 10px;
+        margin: 18px 0;
+      }
+
+      .status {
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        padding: 14px;
+        margin: 18px 0;
+        background: #fbfaf7;
+      }
+
+      .log {
+        display: grid;
+        gap: 10px;
+        margin-top: 18px;
+      }
+
+      .log-entry {
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        padding: 12px;
+        background: #fff;
+      }
+
+      .log-entry strong {
+        display: block;
+        margin-bottom: 4px;
+      }
+
+      .log-entry small {
+        color: var(--muted);
+      }
+
+      @media (max-width: 900px) {
+        .shell {
+          grid-template-columns: 1fr;
+        }
+
+        #zoom-root {
+          min-height: 62vh;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="shell">
+      <section id="zoom-root" aria-label="Zoom meeting"></section>
+      <aside class="console">
+        <div class="eyebrow">Conneen AI</div>
+        <h1>Scout Bot</h1>
+        <p>
+          This browser window joins the Zoom meeting as Scout and relays addressed meeting chat into the
+          Scout meeting assistant. Keep this window open while testing.
+        </p>
+        <p>
+          For other Zoom participants to hear Scout, route this browser tab's audio into a virtual microphone
+          and select that virtual microphone for Scout in the embedded Zoom audio menu.
+        </p>
+
+        <div class="actions">
+          <button type="button" data-join>Join as Scout</button>
+          <button class="secondary" type="button" data-leave disabled>Leave</button>
+        </div>
+        <div class="actions">
+          <button class="secondary" type="button" data-listen>Start local speech listener</button>
+          <button class="secondary" type="button" data-stop-listen disabled>Stop listening</button>
+          <button class="secondary" type="button" data-stop-speech disabled>Stop Scout speech</button>
+        </div>
+
+        <div class="status" data-status>Waiting to join.</div>
+        <div class="status" data-config></div>
+
+        <label>
+          Simulate a Zoom chat message
+          <textarea data-simulated-text rows="4" placeholder="listen up, Scout, summarize the client context"></textarea>
+        </label>
+        <label>
+          Speaker name
+          <input data-simulated-speaker value="Winslow Conneen" />
+        </label>
+        <div class="actions">
+          <button class="secondary" type="button" data-simulate>Send to Scout brain</button>
+        </div>
+
+        <div class="log" data-log></div>
+      </aside>
+    </main>
+
+    <script>
+      import ZoomMtgEmbedded from "@zoom/meetingsdk/embedded";
+
+      const query = new URLSearchParams(window.location.search);
+      const config = {
+        eventId: query.get("eventId") || "",
+        clientId: query.get("clientId") || "",
+        meetingNumber: (query.get("meetingNumber") || "").replace(/\s/g, ""),
+        password: query.get("password") || "",
+        secret: query.get("secret") || "",
+        secretHash: query.get("secretHash") || "",
+        botName: query.get("name") || "Scout",
+        sdkVersion: query.get("sdkVersion") || "4.0.0",
+        chatEcho: query.get("chatEcho") !== "false",
+        voice: query.get("voice") || "marin",
+        pollScout: query.get("pollScout") !== "false",
+      };
+
+      const zoomRoot = document.querySelector("#zoom-root");
+      const statusEl = document.querySelector("[data-status]");
+      const configEl = document.querySelector("[data-config]");
+      const logEl = document.querySelector("[data-log]");
+      const joinButton = document.querySelector("[data-join]");
+      const leaveButton = document.querySelector("[data-leave]");
+      const listenButton = document.querySelector("[data-listen]");
+      const stopListenButton = document.querySelector("[data-stop-listen]");
+      const stopSpeechButton = document.querySelector("[data-stop-speech]");
+      const simulateButton = document.querySelector("[data-simulate]");
+      const simulatedText = document.querySelector("[data-simulated-text]");
+      const simulatedSpeaker = document.querySelector("[data-simulated-speaker]");
+      let zoomClient = null;
+      let joined = false;
+      let recognition = null;
+      let listening = false;
+      let scoutSpeaking = false;
+      let lastScoutResponse = "";
+      let lastScoutResponseStartedAt = 0;
+      let currentScoutAudio = null;
+      let scoutPollTimer = null;
+      let latestSpokenResponseAt = "";
+      const recentScoutOutputs = [];
+      const processedIncomingMessages = new Set();
+
+      function formatError(error) {
+        if (!error) return "Unknown error";
+        if (typeof error === "string") return error;
+        const parts = [];
+        if (error.message) parts.push(error.message);
+        if (error.reason) parts.push(`reason: ${error.reason}`);
+        if (error.errorMessage) parts.push(`errorMessage: ${error.errorMessage}`);
+        if (error.errorCode || error.code) parts.push(`code: ${error.errorCode || error.code}`);
+        if (error.type) parts.push(`type: ${error.type}`);
+        try {
+          const props = Object.getOwnPropertyNames(error).reduce((memo, key) => {
+            memo[key] = error[key];
+            return memo;
+          }, {});
+          const serialized = JSON.stringify(Object.keys(props).length ? props : error);
+          if (serialized && serialized !== "{}") parts.push(serialized);
+        } catch {
+          // Some SDK errors contain unserializable fields.
+        }
+        return parts.filter(Boolean).join(" | ") || String(error);
+      }
+
+      function setStatus(message) {
+        statusEl.textContent = message;
+      }
+
+      function addLog(title, body, meta = "") {
+        const entry = document.createElement("div");
+        entry.className = "log-entry";
+        entry.innerHTML = `<strong></strong><div></div><small></small>`;
+        entry.querySelector("strong").textContent = title;
+        entry.querySelector("div").textContent = body || "";
+        entry.querySelector("small").textContent = meta || new Date().toLocaleTimeString();
+        logEl.prepend(entry);
+      }
+
+      function normalizeSpeechText(text) {
+        return String(text || "").toLowerCase().replace(/[^\w\s]/g, " ").replace(/\s+/g, " ").trim();
+      }
+
+      function rememberScoutOutput(text) {
+        const normalized = normalizeSpeechText(text);
+        if (!normalized) return;
+        recentScoutOutputs.push(normalized);
+        while (recentScoutOutputs.length > 12) recentScoutOutputs.shift();
+      }
+
+      function isScoutAuthoredText(text) {
+        const normalized = normalizeSpeechText(text);
+        if (!normalized) return false;
+        if (normalized.startsWith("scout ")) return true;
+        if (looksLikeScoutEcho(text)) return true;
+        return recentScoutOutputs.some((output) => {
+          if (!output) return false;
+          const sample = output.slice(0, Math.min(output.length, 180));
+          return normalized.includes(sample) || output.includes(normalized.slice(0, Math.min(normalized.length, 180)));
+        });
+      }
+
+      function hasStopPhrase(text) {
+        const normalized = normalizeSpeechText(text);
+        return normalized.includes("that s enough scout") || normalized.includes("thats enough scout") || normalized.includes("stop scout");
+      }
+
+      function looksLikeScoutEcho(text) {
+        const spoken = normalizeSpeechText(lastScoutResponse);
+        const heard = normalizeSpeechText(text);
+        if (!spoken || !heard) return false;
+        if (heard.length < 16) return false;
+        return spoken.includes(heard) || heard.includes(spoken.slice(0, Math.min(spoken.length, 120)));
+      }
+
+      function stopScoutSpeaking(reason = "Stopped") {
+        const wasSpeaking = scoutSpeaking || Boolean(currentScoutAudio) || Boolean(window.speechSynthesis?.speaking);
+        if (!wasSpeaking) return;
+        if (currentScoutAudio) {
+          currentScoutAudio.pause();
+          currentScoutAudio.currentTime = 0;
+          currentScoutAudio = null;
+        }
+        window.speechSynthesis?.cancel?.();
+        scoutSpeaking = false;
+        stopSpeechButton.disabled = true;
+        addLog("Scout speech stopped", reason);
+      }
+
+      async function loadZoomSdk() {
+        setStatus("Loading Zoom Meeting SDK from npm bundle.");
+        if (!ZoomMtgEmbedded || typeof ZoomMtgEmbedded.createClient !== "function") {
+          throw new Error("Zoom Meeting SDK import did not expose createClient.");
+        }
+        addLog("Zoom SDK loaded", "@zoom/meetingsdk/embedded");
+      }
+
+      async function getSignature() {
+        setStatus("Requesting Zoom Meeting SDK signature.");
+        const response = await fetch("/api/zoom/sdk-signature", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "x-scout-meeting-secret": config.secret,
+            "x-scout-meeting-secret-hash": config.secretHash,
+          },
+          body: JSON.stringify({ meetingNumber: config.meetingNumber, role: 0 }),
+        });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) {
+          const fingerprintDetail = data.providedSecretFingerprint || data.serverSecretFingerprint
+            ? ` URL secret hash: ${data.providedSecretFingerprint || "unknown"}; provided hash: ${data.providedSecretHash || config.secretHash || "missing"}; server secret hash: ${data.serverSecretFingerprint || "unknown"}; script URL hash: ${config.secretHash || "missing"}`
+            : "";
+          throw new Error(`${data.error || `Signature request failed with HTTP ${response.status}`}${fingerprintDetail}`);
+        }
+        addLog("SDK signature received", `role ${data.role}; key ${String(data.sdkKey || "").slice(0, 6)}...; server secret hash ${data.scoutSecretFingerprint || "unknown"}`);
+        return data;
+      }
+
+      async function joinMeeting() {
+        if (joined) return;
+        if (!config.eventId || !config.clientId || !config.meetingNumber || !config.secret) {
+          throw new Error("Missing eventId, clientId, meetingNumber, or secret in the bot URL.");
+        }
+
+        setStatus("Loading Zoom Meeting SDK.");
+        await loadZoomSdk();
+        const signature = await getSignature();
+
+        setStatus("Joining Zoom as Scout.");
+        zoomClient = ZoomMtgEmbedded.createClient();
+        try {
+          await zoomClient.init({
+            zoomAppRoot: zoomRoot,
+            language: "en-US",
+            patchJsMedia: true,
+            customize: {
+              video: {
+                isResizable: true,
+                viewSizes: {
+                  default: { width: Math.max(360, zoomRoot.clientWidth), height: Math.max(460, window.innerHeight) },
+                  ribbon: { width: 320, height: 700 },
+                },
+              },
+            },
+          });
+        } catch (error) {
+          throw new Error(`Zoom SDK init failed: ${formatError(error)}`);
+        }
+
+        bindZoomEvents();
+        try {
+          await zoomClient.join({
+            sdkKey: signature.sdkKey,
+            signature: signature.signature,
+            meetingNumber: config.meetingNumber,
+            password: config.password,
+            userName: signature.botName || config.botName,
+          });
+        } catch (error) {
+          throw new Error(`Zoom SDK join failed: ${formatError(error)}`);
+        }
+        joined = true;
+        joinButton.disabled = true;
+        leaveButton.disabled = false;
+        setStatus("Scout joined. If the host uses a waiting room, admit Scout from Zoom.");
+        addLog("Scout joined Zoom", `Meeting ${config.meetingNumber}`);
+        startScoutPolling();
+      }
+
+      function bindZoomEvents() {
+        if (!zoomClient || typeof zoomClient.on !== "function") return;
+        const eventNames = ["chat-on-message", "chat-message", "onChatMessage"];
+        for (const eventName of eventNames) {
+          try {
+            zoomClient.on(eventName, (payload) => {
+              const message = normalizeZoomChat(payload);
+              if (!message.text) return;
+              const messageKey = `${message.speaker}|${normalizeSpeechText(message.text).slice(0, 220)}`;
+              if (processedIncomingMessages.has(messageKey)) return;
+              processedIncomingMessages.add(messageKey);
+              if (processedIncomingMessages.size > 80) {
+                const firstKey = processedIncomingMessages.values().next().value;
+                processedIncomingMessages.delete(firstKey);
+              }
+              if (message.speaker.toLowerCase().includes(config.botName.toLowerCase())) return;
+              if (isScoutAuthoredText(message.text)) {
+                addLog("Ignored Scout chat echo", message.text);
+                return;
+              }
+              if (scoutSpeaking) stopScoutSpeaking(`Interrupted by Zoom chat from ${message.speaker}.`);
+              processMeetingText(message.speaker, message.text, "Zoom chat");
+            });
+            addLog("Bound Zoom event", eventName);
+          } catch {
+            // Different SDK versions expose different event names. Best effort binding is intentional.
+          }
+        }
+        try {
+          zoomClient.on("active-speaker", (payload) => {
+            if (!scoutSpeaking) return;
+            const speakers = Array.isArray(payload) ? payload : [payload];
+            const otherSpeaker = speakers.find((speaker) => {
+              const name = String(speaker?.displayName || speaker?.userName || "");
+              return name && !name.toLowerCase().includes(config.botName.toLowerCase());
+            });
+            if (otherSpeaker) {
+              stopScoutSpeaking(`Interrupted by ${otherSpeaker.displayName || otherSpeaker.userName || "another participant"}.`);
+            }
+          });
+          addLog("Bound Zoom event", "active-speaker");
+        } catch {
+          // Active-speaker events are best effort and vary by SDK/audio state.
+        }
+      }
+
+      function normalizeZoomChat(payload) {
+        const text = extractChatText(payload);
+        const speaker = payload?.sender?.userName
+          || payload?.senderName
+          || payload?.userName
+          || payload?.from
+          || payload?.sender?.name
+          || payload?.payload?.sender?.userName
+          || payload?.payload?.senderName
+          || "Zoom participant";
+        return { speaker: String(speaker), text: String(text) };
+      }
+
+      function extractChatText(value, depth = 0) {
+        if (!value || depth > 4) return "";
+        if (typeof value === "string") return value.trim();
+        if (typeof value !== "object") return "";
+
+        const directKeys = ["message", "text", "content", "chatMessage", "msg", "value"];
+        for (const key of directKeys) {
+          const candidate = extractChatText(value[key], depth + 1);
+          if (candidate) return candidate;
+        }
+
+        const nestedKeys = ["payload", "data", "event", "chat", "detail"];
+        for (const key of nestedKeys) {
+          const candidate = extractChatText(value[key], depth + 1);
+          if (candidate) return candidate;
+        }
+
+        return "";
+      }
+
+      async function sendZoomChat(text) {
+        if (!zoomClient || typeof zoomClient.sendChat !== "function") {
+          addLog("Scout response ready", text, "Zoom SDK chat API unavailable in this SDK build");
+          return false;
+        }
+
+        rememberScoutOutput(text);
+        const attempts = [
+          () => zoomClient.sendChat(`Scout: ${text}`),
+          () => zoomClient.sendChat(`Scout: ${text}`, 0),
+        ];
+        for (const attempt of attempts) {
+          try {
+            await attempt();
+            addLog("Scout posted to Zoom chat", text);
+            return true;
+          } catch {
+            // Try the next SDK shape.
+          }
+        }
+        addLog("Scout response ready", text, "Could not post to Zoom chat from this SDK instance");
+        return false;
+      }
+
+      async function speakLocally(text) {
+        if (!("speechSynthesis" in window)) {
+          addLog("Speech unavailable", "This browser does not support speechSynthesis.");
+          return;
+        }
+        lastScoutResponse = text;
+        rememberScoutOutput(text);
+        lastScoutResponseStartedAt = Date.now();
+        scoutSpeaking = true;
+        stopSpeechButton.disabled = false;
+        try {
+          const response = await fetch("/api/portal/scout-voice", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "x-scout-meeting-secret": config.secret,
+              "x-scout-meeting-secret-hash": config.secretHash,
+            },
+            body: JSON.stringify({
+              text,
+              voice: config.voice,
+              format: "mp3",
+            }),
+          });
+          if (!response.ok) {
+            const data = await response.json().catch(() => ({}));
+            throw new Error(data.error || `Scout voice endpoint failed with HTTP ${response.status}`);
+          }
+          const blob = await response.blob();
+          const audioUrl = URL.createObjectURL(blob);
+          currentScoutAudio = new Audio(audioUrl);
+          currentScoutAudio.onended = () => {
+            URL.revokeObjectURL(audioUrl);
+            currentScoutAudio = null;
+            scoutSpeaking = false;
+            stopSpeechButton.disabled = true;
+            addLog("Scout finished speaking", "");
+          };
+          currentScoutAudio.onerror = () => {
+            URL.revokeObjectURL(audioUrl);
+            currentScoutAudio = null;
+            scoutSpeaking = false;
+            stopSpeechButton.disabled = true;
+            addLog("Scout voice playback error", "Falling back to browser speechSynthesis.");
+            speakWithBrowserVoice(text);
+          };
+          await currentScoutAudio.play();
+          return;
+        } catch (error) {
+          addLog("Scout voice endpoint failed", formatError(error), "Falling back to browser speechSynthesis.");
+          speakWithBrowserVoice(text);
+        }
+      }
+
+      function speakWithBrowserVoice(text) {
+        window.speechSynthesis.cancel();
+        lastScoutResponse = text;
+        rememberScoutOutput(text);
+        lastScoutResponseStartedAt = Date.now();
+        scoutSpeaking = true;
+        stopSpeechButton.disabled = false;
+        const utterance = new SpeechSynthesisUtterance(text);
+        utterance.rate = 1.02;
+        utterance.pitch = 1;
+        utterance.onend = () => {
+          scoutSpeaking = false;
+          stopSpeechButton.disabled = true;
+          addLog("Scout finished speaking", "");
+        };
+        utterance.onerror = (event) => {
+          scoutSpeaking = false;
+          stopSpeechButton.disabled = true;
+          addLog("Scout speech error", event.error || "Speech synthesis failed.");
+        };
+        window.speechSynthesis.speak(utterance);
+      }
+
+      function startScoutPolling() {
+        if (!config.pollScout || scoutPollTimer) return;
+        scoutPollTimer = window.setInterval(() => {
+          pollScoutMeetingBrain().catch((error) => {
+            addLog("Scout poll failed", formatError(error));
+          });
+        }, 1500);
+        pollScoutMeetingBrain().catch(() => {});
+        addLog("Scout response polling started", "Listening for RTMS/native bridge responses from the meeting brain.");
+      }
+
+      async function pollScoutMeetingBrain() {
+        const response = await fetch(`/api/portal/meeting-scout?eventId=${encodeURIComponent(config.eventId)}&clientId=${encodeURIComponent(config.clientId)}`, {
+          headers: {
+            "x-scout-meeting-secret": config.secret,
+            "x-scout-meeting-secret-hash": config.secretHash,
+          },
+        });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(data.error || `Scout poll failed with HTTP ${response.status}`);
+        const scout = data.scout || {};
+        if (scout.stopRequested) {
+          stopScoutSpeaking("Stopped by meeting brain.");
+          return;
+        }
+        if (!scout.shouldRespond || !scout.response || !scout.responseAt) return;
+        if (scout.responseAt === latestSpokenResponseAt) return;
+        latestSpokenResponseAt = scout.responseAt;
+        if (scout.delivery === "chat" || config.chatEcho) await sendZoomChat(scout.response);
+        if (scout.delivery !== "chat") {
+          addLog("Scout speaking from meeting brain", scout.response, "RTMS/native bridge response.");
+          await speakLocally(scout.response);
+        }
+      }
+
+      function getSpeechRecognition() {
+        return window.SpeechRecognition || window.webkitSpeechRecognition || null;
+      }
+
+      function startLocalSpeechListener() {
+        const SpeechRecognition = getSpeechRecognition();
+        if (!SpeechRecognition) {
+          addLog("Speech listener unavailable", "This browser does not expose SpeechRecognition. Use Chrome or Edge for the local mic listener.");
+          return;
+        }
+        if (listening) return;
+
+        recognition = new SpeechRecognition();
+        recognition.continuous = true;
+        recognition.interimResults = false;
+        recognition.lang = "en-US";
+        recognition.onstart = () => {
+          listening = true;
+          listenButton.disabled = true;
+          stopListenButton.disabled = false;
+          addLog("Local speech listener started", "This listens through the bot browser tab's microphone permission, not Zoom's audio stream.");
+        };
+        recognition.onresult = (event) => {
+          for (let index = event.resultIndex; index < event.results.length; index += 1) {
+            const result = event.results[index];
+            if (!result.isFinal) continue;
+            const text = result[0]?.transcript?.trim() || "";
+            if (!text) continue;
+            if (scoutSpeaking && looksLikeScoutEcho(text)) {
+              addLog("Ignored Scout self-audio", text);
+              continue;
+            }
+            if (scoutSpeaking) {
+              const interruptionDelay = Date.now() - lastScoutResponseStartedAt;
+              stopScoutSpeaking(`Interrupted by meeting audio after ${Math.round(interruptionDelay / 100) / 10}s.`);
+              if (!hasStopPhrase(text) && normalizeSpeechText(text).split(" ").length < 3) {
+                addLog("Ignored short interruption noise", text);
+                continue;
+              }
+            }
+            const speaker = simulatedSpeaker.value.trim() || "Meeting audio";
+            processMeetingText(speaker, text, "Local speech listener").catch((error) => {
+              addLog("Speech transcript failed", formatError(error));
+            });
+          }
+        };
+        recognition.onerror = (event) => {
+          addLog("Speech listener error", `${event.error || "unknown"}${event.message ? `: ${event.message}` : ""}`);
+        };
+        recognition.onend = () => {
+          listening = false;
+          listenButton.disabled = false;
+          stopListenButton.disabled = true;
+          addLog("Local speech listener stopped", "");
+        };
+        recognition.start();
+      }
+
+      function stopLocalSpeechListener() {
+        try {
+          recognition?.stop?.();
+        } catch {
+          // Ignore browser speech API stop races.
+        }
+      }
+
+      async function processMeetingText(speaker, text, source = "Manual test") {
+        if (scoutSpeaking && !looksLikeScoutEcho(text)) {
+          stopScoutSpeaking(`Interrupted by ${speaker}.`);
+        }
+        if (looksLikeScoutEcho(text)) {
+          addLog("Ignored Scout self-audio", text);
+          return;
+        }
+        addLog(`${speaker} (${source})`, text);
+        const response = await fetch("/api/portal/meeting-scout", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "x-scout-meeting-secret": config.secret,
+            "x-scout-meeting-secret-hash": config.secretHash,
+          },
+          body: JSON.stringify({
+            action: "append_transcript",
+            eventId: config.eventId,
+            clientId: config.clientId,
+            speaker,
+            text,
+          }),
+        });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(data.error || `Scout request failed with HTTP ${response.status}`);
+        if (data.scout?.stopRequested) {
+          stopScoutSpeaking("Stopped by meeting command.");
+          addLog("Scout stopped", "Stopped by meeting command.");
+          return;
+        }
+        if (!data.scout?.shouldRespond || !data.scout?.response) return;
+
+        if (data.scout.delivery === "chat" || config.chatEcho) {
+          await sendZoomChat(data.scout.response);
+        }
+        if (data.scout.delivery !== "chat") {
+          speakLocally(data.scout.response);
+          addLog("Scout speaking", data.scout.response, "Route this tab/system audio into Scout's Zoom microphone so participants hear it.");
+        }
+      }
+
+      joinButton.addEventListener("click", () => {
+        joinMeeting().catch((error) => {
+          const message = formatError(error);
+          setStatus(message);
+          addLog("Join failed", message);
+        });
+      });
+
+      leaveButton.addEventListener("click", () => {
+        try {
+          zoomClient?.leaveMeeting?.({});
+        } catch {
+          // Ignore SDK-version differences on leave.
+        }
+        joined = false;
+        if (scoutPollTimer) {
+          window.clearInterval(scoutPollTimer);
+          scoutPollTimer = null;
+        }
+        joinButton.disabled = false;
+        leaveButton.disabled = true;
+        setStatus("Scout left the meeting.");
+      });
+
+      listenButton.addEventListener("click", startLocalSpeechListener);
+      stopListenButton.addEventListener("click", stopLocalSpeechListener);
+      stopSpeechButton.addEventListener("click", () => stopScoutSpeaking("Stopped manually."));
+
+      simulateButton.addEventListener("click", () => {
+        const text = simulatedText.value.trim();
+        if (!text) return;
+        processMeetingText(simulatedSpeaker.value.trim() || "Meeting participant", text).catch((error) => {
+          addLog("Scout request failed", error.message);
+        });
+        simulatedText.value = "";
+      });
+
+      if (query.get("autoJoin") === "true") {
+        joinMeeting().catch((error) => {
+          const message = formatError(error);
+          setStatus(message);
+          addLog("Auto-join failed", message);
+        });
+      }
+
+      configEl.textContent = [
+        `Meeting: ${config.meetingNumber || "missing"}`,
+        `Event: ${config.eventId ? "present" : "missing"}`,
+        `Client: ${config.clientId ? "present" : "missing"}`,
+        `Secret: ${config.secret ? "present" : "missing"}`,
+        `Script secret hash: ${config.secretHash || "missing"}`,
+        `SDK version: ${config.sdkVersion}`,
+        `Auto-join: ${query.get("autoJoin") === "true" ? "on" : "off"}`,
+      ].join(" | ");
+
+      window.addEventListener("error", (event) => {
+        addLog("Browser error", formatError(event.error || event.message));
+      });
+
+      window.addEventListener("unhandledrejection", (event) => {
+        addLog("Unhandled promise rejection", formatError(event.reason));
+      });
+    </script>
+  </body>
+</html>
