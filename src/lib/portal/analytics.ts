@@ -1,4 +1,6 @@
 import { eq, selectRows } from "./supabase";
+import type { PortalAuth } from "./auth";
+import { filterReadableRecords, loadPortalAccessContext } from "./permissions";
 
 async function safeSelectRows<T>(label: string, table: string, query: Record<string, unknown>): Promise<T[]> {
   try {
@@ -57,7 +59,7 @@ export async function getAdminAnalytics() {
   };
 }
 
-export async function getClientDashboard(clientId: string, includeInternal = false) {
+export async function getClientDashboard(clientId: string, includeInternal = false, auth?: PortalAuth) {
   const visibility = includeInternal ? undefined : "or=(visibility.eq.shared,visibility.is.null)";
   const scoped = { client_id: eq(clientId), order: "created_at.desc" };
 
@@ -92,6 +94,26 @@ export async function getClientDashboard(clientId: string, includeInternal = fal
     safeSelectRows<any>("notifications", "portal_notifications", { ...scoped, limit: 20 }),
     safeSelectRows<any>("setup tour", "portal_tour_steps", { client_id: eq(clientId), order: "sort_order.asc" }),
   ]);
+
+  if (auth) {
+    const access = await loadPortalAccessContext(auth, clientId);
+    return {
+      client: clientRows[0] || null,
+      contacts: await filterReadableRecords(auth, "contacts", clientId, contacts, access),
+      documents: await filterReadableRecords(auth, "documents", clientId, documents, access),
+      projects: await filterReadableRecords(auth, "projects", clientId, projects, access),
+      tasks: await filterReadableRecords(auth, "tasks", clientId, tasks, access),
+      decisions: await filterReadableRecords(auth, "decisions", clientId, decisions, access),
+      meetings: await filterReadableRecords(auth, "meetings", clientId, meetings, access),
+      timeline: await filterReadableRecords(auth, "timeline_events", clientId, timeline, access),
+      tickets: await filterReadableRecords(auth, "support_tickets", clientId, tickets, access),
+      goals: await filterReadableRecords(auth, "business_goals", clientId, goals, access),
+      metrics: await filterReadableRecords(auth, "success_metrics", clientId, metrics, access),
+      reminders,
+      notifications: await filterReadableRecords(auth, "notifications", clientId, notifications, access),
+      tourSteps: await filterReadableRecords(auth, "tour_steps", clientId, tourSteps, access),
+    };
+  }
 
   return {
     client: clientRows[0] || null,

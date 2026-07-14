@@ -1,6 +1,7 @@
 import OpenAI from "openai";
 import { createToken, hashToken } from "./auth";
-import { getEnv, getPublicBaseUrl } from "./env";
+import { getEnv } from "./env";
+import { buildPortalUrl, secretLinkPayload, sendPortalLinkEmail, shouldReturnSecretLinks } from "./secret-links";
 import { insertRow, selectOne, selectRows, updateRows, eq } from "./supabase";
 
 type ClientMessage = {
@@ -51,8 +52,6 @@ type ProvisionPlan = {
   openQuestions?: Array<Record<string, unknown>>;
   tourSteps?: Array<{ title: string; body: string; portalSection: string }>;
 };
-
-const EMAIL_TIMEOUT_MS = 8000;
 
 function clean(value: unknown, fallback = ""): string {
   return typeof value === "string" && value.trim() ? value.trim() : fallback;
@@ -524,51 +523,6 @@ JSON shape:
   return safeJson(response.output_text || "") || fallbackPlan(lead);
 }
 
-async function sendInviteEmail(email: string, inviteUrl: string, clientName: string): Promise<boolean> {
-  const resendApiKey = getEnv("RESEND_API_KEY");
-  const from = getEnv("LEAD_FROM_EMAIL");
-  if (!resendApiKey || !from) return false;
-
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), EMAIL_TIMEOUT_MS);
-
-  try {
-    const response = await fetch("https://api.resend.com/emails", {
-      method: "POST",
-      signal: controller.signal,
-      headers: {
-        Authorization: `Bearer ${resendApiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        from,
-        to: email,
-        subject: `Your Conneen AI workspace is ready`,
-        html: `
-          <div style="font-family:Arial,sans-serif;line-height:1.5;color:#111">
-            <h2>Your Conneen AI workspace is ready</h2>
-            <p>Scout created a private workspace for ${clientName}. It includes the conversation summary, project notes, data requests, and a custom setup tour before the first meeting.</p>
-            <p><a href="${inviteUrl}">Create your portal account</a></p>
-            <p>If the button does not work, paste this link into your browser:<br>${inviteUrl}</p>
-          </div>
-        `,
-      }),
-    });
-
-    if (!response.ok) {
-      console.error("Portal invite email failed:", response.status, await response.text().catch(() => ""));
-      return false;
-    }
-
-    return true;
-  } catch (error) {
-    console.error("Portal invite email failed:", error);
-    return false;
-  } finally {
-    clearTimeout(timeout);
-  }
-}
-
 async function createClientOwnerInvite(clientId: string, lead: LeadPayload) {
   const existing = await selectOne<any>("portal_users", { email: eq(lead.email) });
   if (existing) {
@@ -590,7 +544,7 @@ async function createClientOwnerInvite(clientId: string, lead: LeadPayload) {
 
       return {
         user: existing,
-        inviteUrl: `${getPublicBaseUrl().replace(/\/$/, "")}/portal?invite=${encodeURIComponent(token)}&email=${encodeURIComponent(lead.email)}`,
+        inviteUrl: buildPortalUrl({ invite: token, email: lead.email }),
         kind: "invite",
       };
     }
@@ -603,7 +557,7 @@ async function createClientOwnerInvite(clientId: string, lead: LeadPayload) {
     });
     return {
       user: existing,
-      inviteUrl: `${getPublicBaseUrl().replace(/\/$/, "")}/portal?magic=${encodeURIComponent(token)}&email=${encodeURIComponent(lead.email)}`,
+      inviteUrl: buildPortalUrl({ magic: token, email: lead.email }),
       kind: "magic",
     };
   }
@@ -626,7 +580,7 @@ async function createClientOwnerInvite(clientId: string, lead: LeadPayload) {
 
   return {
     user,
-    inviteUrl: `${getPublicBaseUrl().replace(/\/$/, "")}/portal?invite=${encodeURIComponent(token)}&email=${encodeURIComponent(lead.email)}`,
+    inviteUrl: buildPortalUrl({ invite: token, email: lead.email }),
     kind: "invite",
   };
 }
@@ -635,12 +589,16 @@ function projectIdPayload(row: Record<string, unknown>, projectId?: string) {
   return projectId ? { ...row, project_id: projectId } : row;
 }
 
+const COMMERCIAL_TABLES = new Set(["portal_estimates", "portal_payments", "portal_invoices", "portal_contracts", "portal_roi_notes"]);
+
 async function insertMany(table: string, clientId: string, rows: Array<Record<string, unknown>> = [], projectId?: string) {
   const inserted = [];
   for (const row of rows.filter(Boolean)) {
+    const commercialDefaults = COMMERCIAL_TABLES.has(table) && !("visibility" in row) ? { visibility: "internal" } : {};
     inserted.push(
       await insertRow<any>(table, {
         client_id: clientId,
+        ...commercialDefaults,
         ...projectIdPayload(row, projectId),
       })
     );
@@ -884,15 +842,28 @@ export async function provisionPortalFromLead(lead: LeadPayload) {
     })
   );
 
-  const inviteEmailSent = await sendInviteEmail(lead.email, invite.inviteUrl, clientName);
+  const inviteEmailSent = await sendPortalLinkEmail({
+    clientId: client.id,
+    userId: invite.user?.id || null,
+    to: lead.email,
+    subject: "Your Conneen AI workspace is ready",
+    heading: "Your Conneen AI workspace is ready",
+    intro: `Scout created a private workspace for ${clientName}. It includes the conversation summary, project notes, data requests, and a custom setup tour before the first meeting.`,
+    linkText: invite.kind === "magic" ? "Open your portal workspace" : "Create your portal account",
+    url: invite.inviteUrl,
+  });
 
-  return {
+  return secretLinkPayload("inviteUrl", invite.inviteUrl, {
     clientId: client.id,
     projectId,
     workflowId: workflows[0]?.id,
-    inviteUrl: invite.inviteUrl,
     inviteKind: invite.kind,
     inviteEmailSent,
+    message: inviteEmailSent
+      ? "Workspace created and portal email sent."
+      : shouldReturnSecretLinks()
+        ? "Workspace created. Email delivery is not configured, so the local invite link is shown."
+        : "Workspace created, but email delivery is not configured. No invite link was returned in this environment.",
     warnings,
-  };
+  });
 }

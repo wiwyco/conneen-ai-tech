@@ -2,8 +2,10 @@ import type { APIRoute } from "astro";
 import { logAudit, logTimeline } from "../../../lib/portal/activity";
 import { canAccessClient, requirePortalAuth } from "../../../lib/portal/auth";
 import { cleanText, jsonResponse } from "../../../lib/portal/http";
+import { canPortalAction } from "../../../lib/portal/permissions";
 import { eq, insertRow, selectOne, updateRows } from "../../../lib/portal/supabase";
 import { uploadStorageObject } from "../../../lib/portal/storage";
+import { validatePortalUpload } from "../../../lib/portal/upload-policy";
 
 export const prerender = false;
 
@@ -38,10 +40,15 @@ export const POST: APIRoute = async ({ request }) => {
     if (!clientId || !taskId || !itemId) return jsonResponse({ error: "Upload request is incomplete." }, 400);
     if (!canAccessClient(auth, clientId)) return jsonResponse({ error: "Forbidden." }, 403);
     if (!(file instanceof File)) return jsonResponse({ error: "A file is required." }, 400);
+    const validation = validatePortalUpload(file);
+    if (!validation.ok) return jsonResponse({ error: validation.error }, validation.status);
 
     const task = await selectOne<any>("portal_tasks", { id: eq(taskId), client_id: eq(clientId) });
     if (!task) return jsonResponse({ error: "Task not found." }, 404);
     if (!auth.isAdmin && task.visibility === "internal") return jsonResponse({ error: "Forbidden." }, 403);
+    if (!await canPortalAction(auth, { section: "tasks", action: "upload_document", clientId, projectId: task.project_id, recordId: task.id, record: task })) {
+      return jsonResponse({ error: "Forbidden." }, 403);
+    }
 
     const items = normalizeUploadItems(task);
     const target = items.find((item: any) => item.id === itemId);

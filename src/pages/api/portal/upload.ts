@@ -2,8 +2,10 @@ import type { APIRoute } from "astro";
 import { canAccessClient, requirePortalAuth } from "../../../lib/portal/auth";
 import { logAudit, logTimeline } from "../../../lib/portal/activity";
 import { cleanText, jsonResponse } from "../../../lib/portal/http";
+import { canPortalAction } from "../../../lib/portal/permissions";
 import { insertRow } from "../../../lib/portal/supabase";
 import { createSignedUrl, uploadStorageObject } from "../../../lib/portal/storage";
+import { validatePortalUpload } from "../../../lib/portal/upload-policy";
 
 export const prerender = false;
 
@@ -15,6 +17,11 @@ export const POST: APIRoute = async ({ request }) => {
     const clientId = cleanText(form.get("clientId"), 80) || auth.clientId || "";
     if (!clientId || !canAccessClient(auth, clientId)) return jsonResponse({ error: "Forbidden." }, 403);
     if (!(file instanceof File)) return jsonResponse({ error: "A file is required." }, 400);
+    const validation = validatePortalUpload(file);
+    if (!validation.ok) return jsonResponse({ error: validation.error }, validation.status);
+    if (!await canPortalAction(auth, { section: "documents", action: "upload_document", clientId, visibility: "shared" })) {
+      return jsonResponse({ error: "Forbidden." }, 403);
+    }
 
     const category = cleanText(form.get("category"), 120) || "general";
     const folderId = cleanText(form.get("folderId"), 80);

@@ -2,6 +2,7 @@ import type { APIRoute } from "astro";
 import { canAccessClient, requirePortalAuth } from "../../../../lib/portal/auth";
 import { logAudit, logTimeline } from "../../../../lib/portal/activity";
 import { cleanText, jsonResponse, readJson } from "../../../../lib/portal/http";
+import { canPortalAction, filterReadableRecords, loadPortalAccessContext } from "../../../../lib/portal/permissions";
 import { sanitizeRecordPayload, validateSectionAccess } from "../../../../lib/portal/records";
 import { eq, insertRow, order, selectOne, selectRows, updateRows } from "../../../../lib/portal/supabase";
 
@@ -22,12 +23,17 @@ export const GET: APIRoute = async ({ request, params, url }) => {
     if (config.clientScoped) {
       if (!clientId) return jsonResponse({ error: "Client id is required." }, 400);
       if (!canAccessClient(auth, clientId)) return jsonResponse({ error: "Forbidden." }, 403);
+      if (!await canPortalAction(auth, { section: config.section, action: "read", clientId })) {
+        return jsonResponse({ error: "Forbidden." }, 403);
+      }
       query.client_id = eq(clientId);
-      if (!auth.isAdmin && config.supportsVisibility !== false) query.or = "(visibility.eq.shared,visibility.is.null)";
     }
 
-    const rows = await selectRows(config.table, query);
-    return jsonResponse({ section: config.section, label: config.label, rows });
+    const rows = await selectRows<any>(config.table, query);
+    const visibleRows = config.clientScoped && clientId
+      ? await filterReadableRecords(auth, config.section, clientId, rows, await loadPortalAccessContext(auth, clientId))
+      : rows;
+    return jsonResponse({ section: config.section, label: config.label, rows: visibleRows });
   } catch (error) {
     return jsonResponse({ error: error instanceof Error ? error.message : "Could not load records." }, 500);
   }
@@ -40,6 +46,9 @@ export const POST: APIRoute = async ({ request, params }) => {
     const { config, payload, clientId } = sanitizeRecordPayload(auth, params.section || "", body);
     if (config.section === "tasks" && !auth.isAdmin) {
       return jsonResponse({ error: "Only admins can create tasks." }, 403);
+    }
+    if (!await canPortalAction(auth, { section: config.section, action: "create", clientId, projectId: cleanText(payload.project_id, 80), visibility: cleanText(payload.visibility, 20) })) {
+      return jsonResponse({ error: "Forbidden." }, 403);
     }
     const row = await insertRow<any>(config.table, {
       ...payload,
@@ -80,6 +89,17 @@ export const PATCH: APIRoute = async ({ request, params }) => {
       const existing = await selectOne<any>(config.table, { id: eq(id), client_id: eq(clientId) });
       if (!existing || existing.assigned_to !== auth.user.id) {
         return jsonResponse({ error: "Only the assigned user can move this task." }, 403);
+      }
+      if (!await canPortalAction(auth, { section: config.section, action: "move_task", clientId, projectId: existing.project_id, recordId: id, record: existing })) {
+        return jsonResponse({ error: "Forbidden." }, 403);
+      }
+    } else {
+      const existing = config.clientScoped
+        ? await selectOne<any>(config.table, { id: eq(id), client_id: eq(clientId) })
+        : await selectOne<any>(config.table, { id: eq(id) });
+      if (!existing) return jsonResponse({ error: "Record not found." }, 404);
+      if (!await canPortalAction(auth, { section: config.section, action: "update", clientId, projectId: existing.project_id || cleanText(payload.project_id, 80), recordId: id, record: existing })) {
+        return jsonResponse({ error: "Forbidden." }, 403);
       }
     }
     const query = config.clientScoped ? { id: eq(id), client_id: eq(clientId) } : { id: eq(id) };

@@ -1,7 +1,7 @@
 import type { PortalAuth } from "./auth";
 import { canAccessClient } from "./auth";
 import { cleanText } from "./http";
-import { getSectionConfig } from "./tables";
+import { getSectionConfig, PORTAL_SECTION_SENSITIVITY } from "./tables";
 
 const ALLOWED_GENERIC_FIELDS = new Set([
   "client_id",
@@ -195,6 +195,9 @@ export function sanitizeRecordPayload(
 
   if ("visibility" in payload && payload.visibility !== "shared" && payload.visibility !== "internal") {
     payload.visibility = "shared";
+  }
+  if (PORTAL_SECTION_SENSITIVITY[config.section] === "commercial_sensitive" && !("visibility" in payload)) {
+    payload.visibility = "internal";
   }
   if (config.supportsVisibility === false) {
     delete payload.visibility;

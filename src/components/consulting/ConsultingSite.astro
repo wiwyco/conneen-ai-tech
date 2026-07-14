@@ -1,11 +1,17 @@
 ---
+const turnstileSiteKey = import.meta.env.PUBLIC_TURNSTILE_SITE_KEY || "";
 ---
 
 <div class="logo-transition" id="logo-transition" aria-hidden="true">
   <img class="brand-logo-image" src="/assets/conneen-ai-logo.png" alt="" />
 </div>
 
-<section class="site-shell" id="site-shell" aria-label="Conneen AI Consulting website">
+<section
+  class="site-shell"
+  id="site-shell"
+  aria-label="Conneen AI Consulting website"
+  data-turnstile-site-key={turnstileSiteKey}
+>
   <header class="site-header">
     <a class="brand-lockup site-brand" href="#top" aria-label="Conneen AI Consulting home">
       <img class="brand-logo-image" src="/assets/conneen-ai-logo.png" alt="Conneen AI Consulting" />
@@ -326,6 +332,16 @@
               required
             ></textarea>
           </div>
+          {
+            turnstileSiteKey && (
+              <div
+                class="turnstile-widget"
+                data-turnstile-widget
+                data-turnstile-form="site"
+                aria-label="Lead submission verification"
+              />
+            )
+          }
           <div class="site-lead-actions">
             <button class="site-button primary" id="site-lead-submit-button" type="submit">Send the process</button>
             <button class="site-button return-chat-trigger" type="button">Ask Scout</button>

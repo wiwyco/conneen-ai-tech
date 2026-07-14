@@ -56,7 +56,7 @@
 
       <form class="portal-panel help-form" data-auth-panel="help" data-access-link-form hidden style="display:none">
         <h2>Account help</h2>
-        <p class="help-copy">Your username is your email address. Enter it below to create a local reset or magic-login link.</p>
+        <p class="help-copy">Your username is your email address. Enter it below and we will send a reset or magic-login link if the account exists.</p>
         <label>
           Email
           <input name="email" type="email" autocomplete="email" required />
@@ -68,7 +68,7 @@
             <option value="magic">Magic login link</option>
           </select>
         </label>
-        <button type="submit">Create help link</button>
+        <button type="submit">Send help link</button>
         <textarea data-access-link-output readonly></textarea>
         <p class="form-status" data-access-link-status></p>
         <div class="auth-actions">

@@ -12,7 +12,7 @@ export const GET: APIRoute = async ({ request, url }) => {
     const clientId = requestedClientId || auth.clientId;
     if (!clientId) return jsonResponse({ error: "A client workspace is required." }, 400);
     if (!canAccessClient(auth, clientId)) return jsonResponse({ error: "Forbidden." }, 403);
-    return jsonResponse(await getClientDashboard(clientId, auth.isAdmin));
+    return jsonResponse(await getClientDashboard(clientId, auth.isAdmin, auth));
   } catch (error) {
     const message = error instanceof Error ? error.message : "Dashboard failed.";
     return jsonResponse({ error: message }, message === "Authentication required." ? 401 : 500);

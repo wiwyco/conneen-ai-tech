@@ -1,7 +1,7 @@
 import type { APIRoute } from "astro";
 import { createToken, hashPassword, hashToken, requirePortalAuth } from "../../../lib/portal/auth";
-import { getPublicBaseUrl } from "../../../lib/portal/env";
 import { cleanEmail, cleanText, jsonResponse, readJson } from "../../../lib/portal/http";
+import { buildPortalUrl, secretLinkPayload, sendPortalLinkEmail, shouldReturnSecretLinks } from "../../../lib/portal/secret-links";
 import { eq, insertRow, selectRows, updateRows } from "../../../lib/portal/supabase";
 
 export const prerender = false;
@@ -68,11 +68,27 @@ export const POST: APIRoute = async ({ request }) => {
       expires_at: new Date(Date.now() + 1000 * 60 * 60 * 24 * 14).toISOString(),
       created_by: auth.user.id,
     });
-
-    return jsonResponse({
-      user,
-      inviteUrl: `${getPublicBaseUrl().replace(/\/$/, "")}/portal?invite=${encodeURIComponent(inviteToken)}&email=${encodeURIComponent(email)}`,
+    const inviteUrl = buildPortalUrl({ invite: inviteToken, email });
+    const inviteEmailSent = await sendPortalLinkEmail({
+      clientId,
+      userId: user.id,
+      to: email,
+      subject: "Your Conneen AI portal invite",
+      heading: "Your Conneen AI portal invite",
+      intro: `${auth.user.display_name || "Conneen AI"} invited you to the client portal.`,
+      linkText: "Create your portal account",
+      url: inviteUrl,
     });
+
+    return jsonResponse(secretLinkPayload("inviteUrl", inviteUrl, {
+      user,
+      inviteEmailSent,
+      message: inviteEmailSent
+        ? "Invite email sent."
+        : shouldReturnSecretLinks()
+          ? "Invite created. Email delivery is not configured, so the local invite link is shown."
+          : "Invite created, but email delivery is not configured. No invite link was returned in this environment.",
+    }));
   } catch (error) {
     return jsonResponse({ error: error instanceof Error ? error.message : "Could not invite user." }, 500);
   }

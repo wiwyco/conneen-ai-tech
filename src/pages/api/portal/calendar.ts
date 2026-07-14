@@ -3,6 +3,7 @@ import { canAccessClient, requirePortalAuth } from "../../../lib/portal/auth";
 import { logAudit, logTimeline } from "../../../lib/portal/activity";
 import { cleanText, jsonResponse, readJson } from "../../../lib/portal/http";
 import { createOnlineMeeting } from "../../../lib/portal/meetingProvider";
+import { canPortalAction, filterReadableRecords, loadPortalAccessContext } from "../../../lib/portal/permissions";
 import { insertRow, order, selectRows } from "../../../lib/portal/supabase";
 
 export const prerender = false;
@@ -55,8 +56,15 @@ export const GET: APIRoute = async ({ request, url }) => {
       limit: 500,
     });
 
-    const visibleEvents = rows
-      .filter((event) => auth.isAdmin || event.client_id === clientId)
+    const access = await loadPortalAccessContext(auth, clientId);
+    const readableEvents = await filterReadableRecords(
+      auth,
+      "calendar_events",
+      clientId,
+      rows.filter((event) => auth.isAdmin || event.client_id === clientId),
+      access
+    );
+    const visibleEvents = readableEvents
       .map((event) => ({
         id: event.id,
         client_id: event.client_id,
@@ -105,6 +113,9 @@ export const POST: APIRoute = async ({ request }) => {
     const clientId = cleanText(body.clientId, 80) || auth.clientId || "";
     if (!clientId) return jsonResponse({ error: "Client id is required." }, 400);
     if (!canAccessClient(auth, clientId)) return jsonResponse({ error: "Forbidden." }, 403);
+    if (!await canPortalAction(auth, { section: "calendar_events", action: "create", clientId, projectId: cleanText(body.project_id, 80), visibility: "shared" })) {
+      return jsonResponse({ error: "Forbidden." }, 403);
+    }
 
     const eventAt = cleanText(body.eventAt, 80);
     const start = new Date(eventAt);

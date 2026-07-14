@@ -344,6 +344,11 @@ body {
     box-shadow: 0 0 0 3px rgba(17, 17, 17, 0.10);
   }
 
+  .turnstile-widget {
+    min-height: 65px;
+    overflow: hidden;
+  }
+
   .lead-account-status,
   .lead-portal-link {
     margin: 0;

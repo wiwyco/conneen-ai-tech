@@ -78,7 +78,12 @@
             <input name="title" type="hidden" />
             <input name="category" type="hidden" value="general" />
             <input name="visibility" type="hidden" value="shared" />
-            <input name="file" type="file" multiple />
+            <input
+              name="file"
+              type="file"
+              multiple
+              accept=".csv,.doc,.docx,.gif,.heic,.jpeg,.jpg,.json,.md,.pdf,.png,.ppt,.pptx,.rtf,.txt,.webp,.xls,.xlsx"
+            />
           </form>
 
           <div class="library-breadcrumbs" data-document-breadcrumbs></div>
@@ -295,6 +300,69 @@
         <section class="portal-panel">
           <h2>Clients</h2>
           <div data-admin-clients></div>
+        </section>
+        <section class="portal-panel access-panel">
+          <div class="panel-heading">
+            <h2>Access Control</h2>
+            <p>Manage permission groups, default policies, and record-level user access.</p>
+          </div>
+          <div class="access-grid">
+            <form class="compact-form" data-access-group-form>
+              <h3>Create Group</h3>
+              <label>Name <input name="name" required /></label>
+              <label>Description <input name="description" /></label>
+              <label>Client scope <select name="clientId" data-access-client-scope></select></label>
+              <label>Project scope <select name="projectId" data-access-project-scope></select></label>
+              <button type="submit">Create group</button>
+            </form>
+            <form class="compact-form" data-access-member-form>
+              <h3>Assign User To Group</h3>
+              <label>Group <select name="groupId" data-access-group-select></select></label>
+              <label>User <select name="userId" data-access-user-select></select></label>
+              <button type="submit">Add member</button>
+            </form>
+            <form class="compact-form" data-access-policy-form>
+              <h3>Add Group Policy</h3>
+              <label>Group <select name="groupId" data-access-policy-group-select></select></label>
+              <label>Section <select name="section" data-access-section-select></select></label>
+              <label>Action <select name="policyAction" data-access-action-select></select></label>
+              <label>Visibility
+                <select name="visibility">
+                  <option value="shared">Shared only</option>
+                  <option value="internal">Internal allowed</option>
+                  <option value="any">Any visibility</option>
+                </select>
+              </label>
+              <label>Decision
+                <select name="allowed">
+                  <option value="true">Allow</option>
+                  <option value="false">Deny</option>
+                </select>
+              </label>
+              <button type="submit">Add policy</button>
+            </form>
+            <form class="compact-form" data-access-grant-form>
+              <h3>Grant Specific Record</h3>
+              <label>Section <select name="section" data-access-grant-section-select></select></label>
+              <label>Record ID <input name="recordId" placeholder="UUID of the record" required /></label>
+              <label>Subject type
+                <select name="subjectType" data-access-subject-type>
+                  <option value="user">User</option>
+                  <option value="group">Group</option>
+                </select>
+              </label>
+              <label>Subject <select name="subjectId" data-access-subject-select></select></label>
+              <label>Action <select name="grantAction" data-access-grant-action-select></select></label>
+              <label>Decision
+                <select name="allowed">
+                  <option value="true">Allow</option>
+                  <option value="false">Deny</option>
+                </select>
+              </label>
+              <button type="submit">Add record grant</button>
+            </form>
+          </div>
+          <div class="access-summary" data-access-summary></div>
         </section>
         <div class="record-grid">
           <div data-record-panel="admin_notes"></div>
@@ -531,11 +599,12 @@
           <input name="speaker" placeholder="Priya" />
         </label>
         <label>
-          Live transcript update
-          <textarea name="text" placeholder="Paste or stream the latest thing said in the meeting..."></textarea>
+          Transcript update or full meeting transcript
+          <textarea name="text" placeholder="Paste the latest thing said, or paste the full meeting transcript before processing it into portal records..."></textarea>
         </label>
         <footer>
           <button class="secondary" type="button" data-meeting-scout-refresh>Refresh Scout notes</button>
+          <button class="secondary" type="button" data-meeting-scout-finalize>Process transcript into portal</button>
           <button type="submit">Add transcript update</button>
         </footer>
       </form>

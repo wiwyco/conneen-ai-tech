@@ -2,6 +2,7 @@ import type { APIRoute } from "astro";
 import { canAccessClient, requirePortalAuth } from "../../../lib/portal/auth";
 import { logAudit, logTimeline } from "../../../lib/portal/activity";
 import { cleanText, jsonResponse, readJson } from "../../../lib/portal/http";
+import { canPortalAction } from "../../../lib/portal/permissions";
 import { eq, insertRow, order, selectRows } from "../../../lib/portal/supabase";
 
 export const prerender = false;
@@ -11,6 +12,9 @@ export const GET: APIRoute = async ({ request, url }) => {
     const auth = await requirePortalAuth(request);
     const clientId = cleanText(url.searchParams.get("clientId"), 80) || auth.clientId || "";
     if (!clientId || !canAccessClient(auth, clientId)) return jsonResponse({ error: "Forbidden." }, 403);
+    if (!await canPortalAction(auth, { section: "documents", action: "read", clientId })) {
+      return jsonResponse({ error: "Forbidden." }, 403);
+    }
 
     const query: Record<string, string | number> = {
       client_id: eq(clientId),
@@ -35,6 +39,9 @@ export const POST: APIRoute = async ({ request }) => {
     const visibility = cleanText(body.visibility, 20) === "internal" && auth.isAdmin ? "internal" : "shared";
 
     if (!clientId || !canAccessClient(auth, clientId)) return jsonResponse({ error: "Forbidden." }, 403);
+    if (!await canPortalAction(auth, { section: "documents", action: "create", clientId, visibility })) {
+      return jsonResponse({ error: "Forbidden." }, 403);
+    }
     if (!name) return jsonResponse({ error: "Folder name is required." }, 400);
 
     const folder = await insertRow<any>("portal_document_folders", {

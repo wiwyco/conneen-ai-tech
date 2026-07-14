@@ -4,6 +4,7 @@ import { canAccessClient, requirePortalAuth } from "../../../lib/portal/auth";
 import { logAudit, logTimeline } from "../../../lib/portal/activity";
 import { getEnv } from "../../../lib/portal/env";
 import { cleanText, jsonResponse, readJson } from "../../../lib/portal/http";
+import { canPortalAction } from "../../../lib/portal/permissions";
 import { insertRow } from "../../../lib/portal/supabase";
 
 export const prerender = false;
@@ -150,6 +151,9 @@ export const POST: APIRoute = async ({ request }) => {
     const messages = cleanMessages(body.messages);
 
     if (!clientId || !canAccessClient(auth, clientId)) return jsonResponse({ error: "Forbidden." }, 403);
+    if (!await canPortalAction(auth, { section: "projects", action: "create", clientId, visibility: "shared" })) {
+      return jsonResponse({ error: "Forbidden." }, 403);
+    }
     if (!messages.length) return jsonResponse({ error: "Scout needs a project description first." }, 400);
 
     if (action !== "create") {
@@ -199,6 +203,7 @@ export const POST: APIRoute = async ({ request }) => {
         cleanText(plan.estimate?.assumptions, 4000) ||
         "Rough planning estimate at $150/hr. Requires Conneen AI review and approval.",
       approval_status: "draft",
+      visibility: "internal",
     });
 
     const payment = await insertRow<any>("portal_payments", {
@@ -209,7 +214,7 @@ export const POST: APIRoute = async ({ request }) => {
       status: "planned",
       due_date: cleanText(plan.payment?.due_date, 40) || null,
       notes: cleanText(plan.payment?.notes, 4000) || "Placeholder pending approved scope and estimate.",
-      visibility: "shared",
+      visibility: "internal",
     });
 
     const invoice = await insertRow<any>("portal_invoices", {
@@ -220,6 +225,7 @@ export const POST: APIRoute = async ({ request }) => {
       status: cleanText(plan.invoice?.status, 80) || "draft",
       due_date: cleanText(plan.invoice?.due_date, 40) || null,
       notes: cleanText(plan.invoice?.notes, 4000) || "Draft invoice placeholder.",
+      visibility: "internal",
     });
 
     const contract = await insertRow<any>("portal_contracts", {
@@ -229,6 +235,7 @@ export const POST: APIRoute = async ({ request }) => {
       contract_type: cleanText(plan.contract?.contract_type, 80) || "SOW",
       status: cleanText(plan.contract?.status, 80) || "draft",
       notes: cleanText(plan.contract?.notes, 4000) || "Draft SOW placeholder.",
+      visibility: "internal",
     });
 
     await logAudit(auth, "project_scout_create", "portal_projects", project.id, clientId);

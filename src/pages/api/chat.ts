@@ -1,6 +1,7 @@
 import type { APIRoute } from "astro";
 import OpenAI from "openai";
 import { COMPANY_KNOWLEDGE } from "../../data/companyKnowledge";
+import { enforceRateLimit, RATE_LIMITS } from "../../lib/portal/rate-limit";
 
 export const prerender = false;
 
@@ -64,6 +65,13 @@ export const POST: APIRoute = async ({ request }) => {
     const body = await request.json().catch(() => null);
     const messages = cleanMessages(body?.messages);
     const visitorFirstName = cleanFirstName(body?.visitorFirstName);
+    const limited = await enforceRateLimit({
+      request,
+      route: "public_scout_chat",
+      subject: visitorFirstName || "anonymous",
+      ...RATE_LIMITS.publicChat,
+    });
+    if (limited) return limited;
 
     if (!messages.length || messages[messages.length - 1].role !== "user") {
       return new Response(JSON.stringify({ error: "A user message is required." }), {

@@ -40,6 +40,17 @@ const state = {
     projects: [],
     milestones: [],
   },
+  access: {
+    groups: [],
+    memberships: [],
+    policies: [],
+    grants: [],
+    users: [],
+    clients: [],
+    projects: [],
+    sections: [],
+    actions: [],
+  },
   currentMeetingScoutId: "",
   setupTourDismissedClientId: "",
 };
@@ -80,6 +91,31 @@ const taskTypeLabels = {
   handover_package: "Handover package development",
 };
 
+const uploadPolicy = {
+  maxBytes: 25 * 1024 * 1024,
+  accept: ".csv,.doc,.docx,.gif,.heic,.jpeg,.jpg,.json,.md,.pdf,.png,.ppt,.pptx,.rtf,.txt,.webp,.xls,.xlsx",
+  extensions: new Set([
+    "csv",
+    "doc",
+    "docx",
+    "gif",
+    "heic",
+    "jpeg",
+    "jpg",
+    "json",
+    "md",
+    "pdf",
+    "png",
+    "ppt",
+    "pptx",
+    "rtf",
+    "txt",
+    "webp",
+    "xls",
+    "xlsx",
+  ]),
+};
+
 const supportTaskTypeOptions = [
   ["development", "Development"],
   ["open_question", "Open question"],
@@ -113,10 +149,10 @@ const sectionConfig = {
   documents: { label: "Documents", title: "title", fields: [["title", "Title"], ["category", "Category"], ["description", "Description", "textarea"], ["tags", "Tags, comma separated"], ["visibility", "Visibility", "visibility"]] },
   projects: { label: "Projects", title: "name", fields: [["name", "Name"], ["agile_stage", "Agile stage"], ["status", "Status"], ["scope", "Scope", "textarea"], ["goals", "Goals", "textarea"], ["deliverables", "Deliverables", "textarea"], ["target_date", "Target date", "date"], ["visibility", "Visibility", "visibility"]] },
   milestones: { label: "Milestones", title: "name", fields: [["name", "Name"], ["stage", "Stage"], ["status", "Status"], ["due_date", "Due date", "date"], ["notes", "Notes", "textarea"]] },
-  estimates: { label: "Quote / Estimate History", title: "title", fields: [["title", "Title"], ["estimate_type", "Type"], ["hour_range_low", "Low hours", "number"], ["hour_range_high", "High hours", "number"], ["assumptions", "Assumptions", "textarea"], ["approval_status", "Approval status"]] },
+  estimates: { label: "Quote / Estimate History", title: "title", fields: [["title", "Title"], ["estimate_type", "Type"], ["hour_range_low", "Low hours", "number"], ["hour_range_high", "High hours", "number"], ["assumptions", "Assumptions", "textarea"], ["approval_status", "Approval status"], ["visibility", "Visibility", "visibility"]] },
   payments: { label: "Milestone Payments", title: "title", fields: [["title", "Title"], ["amount", "Amount", "number"], ["status", "Status"], ["due_date", "Due date", "date"], ["notes", "Notes", "textarea"], ["visibility", "Visibility", "visibility"]] },
-  invoices: { label: "Invoices", title: "invoice_number", fields: [["invoice_number", "Invoice number"], ["amount", "Amount", "number"], ["status", "Status"], ["issued_at", "Issued", "date"], ["due_date", "Due", "date"], ["notes", "Notes", "textarea"]] },
-  contracts: { label: "Contracts / SOWs", title: "title", fields: [["title", "Title"], ["contract_type", "Type"], ["status", "Status"], ["signed_at", "Signed date", "date"], ["notes", "Notes", "textarea"]] },
+  invoices: { label: "Invoices", title: "invoice_number", fields: [["invoice_number", "Invoice number"], ["amount", "Amount", "number"], ["status", "Status"], ["issued_at", "Issued", "date"], ["due_date", "Due", "date"], ["notes", "Notes", "textarea"], ["visibility", "Visibility", "visibility"]] },
+  contracts: { label: "Contracts / SOWs", title: "title", fields: [["title", "Title"], ["contract_type", "Type"], ["status", "Status"], ["signed_at", "Signed date", "date"], ["notes", "Notes", "textarea"], ["visibility", "Visibility", "visibility"]] },
   business_knowledge: { label: "Business Knowledge", title: "title", fields: [["title", "Title"], ["category", "Category"], ["content", "Content", "textarea"], ["tags", "Tags, comma separated"], ["visibility", "Visibility", "visibility"]] },
   workflows: { label: "Workflow Inventory", title: "name", fields: [["name", "Name"], ["agile_epic", "Agile epic"], ["current_process", "Current process", "textarea"], ["pain_points", "Pain points", "textarea"], ["tools", "Tools"], ["inputs", "Inputs"], ["outputs", "Outputs"], ["people_involved", "People"], ["frequency", "Frequency"], ["cost_of_pain", "Cost of pain"], ["automation_opportunity", "Automation opportunity", "textarea"], ["priority", "Priority"], ["status", "Status"], ["visibility", "Visibility", "visibility"]] },
   pain_points: { label: "Pain Points", title: "title", fields: [["title", "Title"], ["description", "Description", "textarea"], ["severity", "Severity"], ["business_impact", "Business impact", "textarea"], ["status", "Status"]] },
@@ -146,7 +182,7 @@ const sectionConfig = {
   admin_notes: { label: "Admin Notes", title: "title", fields: [["title", "Title"], ["note", "Note", "textarea"], ["status_label", "Status label"]] },
   followup_reminders: { label: "Follow-up Reminders", title: "title", fields: [["title", "Title"], ["due_at", "Due"], ["status", "Status"], ["notes", "Notes", "textarea"]] },
   scout_transcripts: { label: "Scout Transcript Archive", title: "title", fields: [["title", "Title"], ["summary", "Summary", "textarea"]] },
-  roi_notes: { label: "ROI Notes", title: "title", fields: [["title", "Title"], ["time_saved_notes", "Time saved", "textarea"], ["revenue_impact_notes", "Revenue impact", "textarea"], ["quality_impact_notes", "Quality impact", "textarea"], ["estimate_notes", "Estimate notes", "textarea"]] },
+  roi_notes: { label: "ROI Notes", title: "title", fields: [["title", "Title"], ["time_saved_notes", "Time saved", "textarea"], ["revenue_impact_notes", "Revenue impact", "textarea"], ["quality_impact_notes", "Quality impact", "textarea"], ["estimate_notes", "Estimate notes", "textarea"], ["visibility", "Visibility", "visibility"]] },
   change_requests: { label: "Change Requests", title: "title", fields: [["title", "Title"], ["description", "Description", "textarea"], ["status", "Status"], ["impact_notes", "Impact notes", "textarea"], ["approval_notes", "Approval notes", "textarea"]] },
 };
 
@@ -734,6 +770,29 @@ function formatFileSize(value) {
   return `${display >= 10 || unit === 0 ? Math.round(display) : display.toFixed(1)} ${units[unit]}`;
 }
 
+function validateUploadFile(file) {
+  if (!file) return "Choose a file first.";
+  if (file.size <= 0) return "The uploaded file is empty.";
+  if (file.size > uploadPolicy.maxBytes) {
+    return `File is too large. Maximum upload size is ${formatFileSize(uploadPolicy.maxBytes)}.`;
+  }
+
+  const extension = String(file.name || "").toLowerCase().split(".").pop();
+  if (!extension || !uploadPolicy.extensions.has(extension)) {
+    return "File type is not allowed. Upload a PDF, image, text, CSV, JSON, or Office document.";
+  }
+
+  return "";
+}
+
+function validateUploadFiles(files) {
+  for (const file of files) {
+    const error = validateUploadFile(file);
+    if (error) return error;
+  }
+  return "";
+}
+
 function formatMoney(value) {
   const amount = Number(value);
   if (!Number.isFinite(amount) || amount <= 0) return "";
@@ -1150,6 +1209,12 @@ async function loadDocumentLibrary() {
 async function uploadDocumentFiles(files) {
   const clientId = activeClientId();
   if (!clientId || !files?.length) return;
+  const validationError = validateUploadFiles(files);
+  if (validationError) {
+    showToast(validationError, "error");
+    setStatus(validationError, true);
+    return;
+  }
   const form = qs("[data-upload-form]");
   const folder = currentFolder();
   setStatus(`Uploading ${files.length} document${files.length === 1 ? "" : "s"}...`);
@@ -1787,7 +1852,7 @@ function openTaskUpload(taskId) {
         ${done ? "" : `
           <label class="upload-file-picker">
             <span>Choose file</span>
-            <input type="file" data-upload-file="${escapeHtml(item.id)}" />
+            <input type="file" data-upload-file="${escapeHtml(item.id)}" accept="${escapeHtml(uploadPolicy.accept)}" />
           </label>
           <button type="button" data-upload-submit="${escapeHtml(item.id)}">Upload</button>
         `}
@@ -1813,8 +1878,9 @@ function closeTaskUpload() {
 async function uploadRequestedDocument(taskId, itemId) {
   const fileInput = qs(`[data-upload-file="${CSS.escape(itemId)}"]`);
   const file = fileInput?.files?.[0];
-  if (!file) {
-    showToast("Choose a file first.", "error");
+  const validationError = validateUploadFile(file);
+  if (validationError) {
+    showToast(validationError, "error");
     return;
   }
 
@@ -2156,6 +2222,7 @@ async function refreshMeetingScout(action = "regenerate_summary", extra = {}) {
     renderSupportTimeline();
     renderExecutiveDashboard();
   }
+  return data;
 }
 
 async function handleMeetingTranscript(event) {
@@ -2172,6 +2239,30 @@ async function handleMeetingTranscript(event) {
     showToast("Scout updated the meeting notes.");
   } catch (error) {
     setStatus(error.message || "Could not update meeting notes.", true);
+  }
+}
+
+async function handleMeetingTranscriptFinalize() {
+  const form = qs("[data-meeting-transcript-form]");
+  if (!form) return;
+  const text = String(form.text?.value || "").trim();
+  const speaker = String(form.speaker?.value || "").trim();
+  try {
+    setStatus("Scout is processing the meeting transcript...");
+    const data = await refreshMeetingScout("finalize", {
+      ...(text ? { fullTranscript: text } : {}),
+      ...(speaker ? { speaker } : {}),
+    });
+    setStatus("");
+    const count = Object.values(data.createdCounts || {}).reduce((sum, value) => sum + Number(value || 0), 0);
+    if (data.warnings?.length) {
+      showToast(data.warnings[0], "error");
+    } else {
+      showToast(count ? `Scout created ${count} portal records from the meeting.` : "Scout processed the meeting transcript.");
+    }
+    await Promise.allSettled([loadKnowledgeLibrary(), loadWorkBoard(), loadSupportTimeline(), loadDashboard()]);
+  } catch (error) {
+    setStatus(error.message || "Could not process meeting transcript.", true);
   }
 }
 
@@ -2518,9 +2609,134 @@ async function loadDashboard() {
   renderExecutiveDashboard();
 }
 
+function accessGroupName(id) {
+  const group = state.access.groups.find((item) => item.id === id);
+  return group ? group.name : "Unknown group";
+}
+
+function accessUserName(id) {
+  const user = state.access.users.find((item) => item.id === id);
+  return user ? `${user.display_name}${user.email ? ` (${user.email})` : ""}` : "Unknown user";
+}
+
+function accessSectionLabel(section) {
+  const item = state.access.sections.find((entry) => entry.section === section);
+  if (!item) return section;
+  const sensitivity = item.sensitivity && item.sensitivity !== "client_shared" ? ` - ${item.sensitivity.replaceAll("_", " ")}` : "";
+  return `${item.label}${sensitivity}`;
+}
+
+function optionList(items, valueField, labelField, emptyLabel = "None") {
+  return [
+    `<option value="">${escapeHtml(emptyLabel)}</option>`,
+    ...items.map((item) => `<option value="${escapeHtml(item[valueField] || "")}">${escapeHtml(typeof labelField === "function" ? labelField(item) : item[labelField])}</option>`),
+  ].join("");
+}
+
+function renderAccessControls() {
+  if (!state.isAdmin) return;
+  const clientOptions = optionList(state.access.clients, "id", "name", "Global / all clients");
+  const projects = state.access.projects.filter((project) => !activeClientId() || project.client_id === activeClientId());
+  const projectOptions = optionList(projects, "id", "name", "All projects in scope");
+  const groupOptions = optionList(state.access.groups, "id", (group) => `${group.name}${group.is_system ? " (system)" : ""}`, "Choose group");
+  const userOptions = optionList(
+    state.access.users.filter((user) => !user.disabled_at && (!activeClientId() || user.client_id === activeClientId() || ["admin", "conneen_collaborator"].includes(user.role))),
+    "id",
+    (user) => `${user.display_name}${user.role ? ` - ${user.role}` : ""}`,
+    "Choose user"
+  );
+  const sectionOptions = optionList(state.access.sections, "section", (section) => accessSectionLabel(section.section), "Choose section");
+  const actionOptions = (state.access.actions || []).map((action) => `<option value="${escapeHtml(action)}">${escapeHtml(action)}</option>`).join("");
+
+  qsa("[data-access-client-scope]").forEach((select) => {
+    select.innerHTML = clientOptions;
+    select.value = activeClientId() || "";
+  });
+  qsa("[data-access-project-scope]").forEach((select) => {
+    select.innerHTML = projectOptions;
+  });
+  qsa("[data-access-group-select], [data-access-policy-group-select]").forEach((select) => {
+    select.innerHTML = groupOptions;
+  });
+  qsa("[data-access-user-select]").forEach((select) => {
+    select.innerHTML = userOptions;
+  });
+  qsa("[data-access-section-select], [data-access-grant-section-select]").forEach((select) => {
+    select.innerHTML = sectionOptions;
+  });
+  qsa("[data-access-action-select], [data-access-grant-action-select]").forEach((select) => {
+    select.innerHTML = actionOptions;
+  });
+  renderAccessSubjectOptions();
+  renderAccessSummary();
+}
+
+function renderAccessSubjectOptions() {
+  const type = qs("[data-access-subject-type]")?.value || "user";
+  const select = qs("[data-access-subject-select]");
+  if (!select) return;
+  select.innerHTML = type === "group"
+    ? optionList(state.access.groups, "id", (group) => `${group.name}${group.is_system ? " (system)" : ""}`, "Choose group")
+    : optionList(
+        state.access.users.filter((user) => !user.disabled_at),
+        "id",
+        (user) => `${user.display_name}${user.email ? ` (${user.email})` : ""}`,
+        "Choose user"
+      );
+}
+
+function renderAccessSummary() {
+  const mount = qs("[data-access-summary]");
+  if (!mount) return;
+  const memberships = state.access.memberships.slice(0, 12);
+  const policies = state.access.policies.slice(0, 12);
+  const grants = state.access.grants.slice(0, 12);
+  mount.innerHTML = `
+    <div class="access-summary-column">
+      <h3>Group Members</h3>
+      ${memberships.length ? memberships.map((membership) => `
+        <article>
+          <strong>${escapeHtml(accessUserName(membership.user_id))}</strong>
+          <span>${escapeHtml(accessGroupName(membership.group_id))}</span>
+          <button class="link-button" type="button" data-access-delete-member="${membership.id}">Remove</button>
+        </article>
+      `).join("") : `<p class="empty">No custom memberships yet.</p>`}
+    </div>
+    <div class="access-summary-column">
+      <h3>Policies</h3>
+      ${policies.length ? policies.map((policy) => `
+        <article>
+          <strong>${escapeHtml(accessGroupName(policy.group_id))}</strong>
+          <span>${policy.allowed ? "Allow" : "Deny"} ${escapeHtml(policy.action)} on ${escapeHtml(accessSectionLabel(policy.section))} (${escapeHtml(policy.visibility || "shared")})</span>
+          <button class="link-button" type="button" data-access-delete-policy="${policy.id}">Delete</button>
+        </article>
+      `).join("") : `<p class="empty">No policies yet.</p>`}
+    </div>
+    <div class="access-summary-column">
+      <h3>Record Grants</h3>
+      ${grants.length ? grants.map((grant) => `
+        <article>
+          <strong>${grant.allowed ? "Allow" : "Deny"} ${escapeHtml(grant.action)} on ${escapeHtml(accessSectionLabel(grant.section))}</strong>
+          <span>${escapeHtml(grant.subject_type === "group" ? accessGroupName(grant.subject_id) : accessUserName(grant.subject_id))} | ${escapeHtml(grant.record_id)}</span>
+          <button class="link-button" type="button" data-access-delete-grant="${grant.id}">Delete</button>
+        </article>
+      `).join("") : `<p class="empty">No record-specific grants yet.</p>`}
+    </div>
+  `;
+}
+
+async function loadAccess() {
+  if (!state.isAdmin) return;
+  state.access = await api(`/api/portal/access?clientId=${encodeURIComponent(activeClientId() || "")}`);
+  renderAccessControls();
+}
+
 async function loadAdmin() {
   if (!state.isAdmin) return;
-  const admin = await api("/api/portal/admin");
+  const [admin] = await Promise.all([
+    api("/api/portal/admin"),
+    loadAccess().catch((error) => setStatus(error.message || "Could not load access controls.", true)),
+  ]);
   qs("[data-admin-metrics]").innerHTML = [
     metric("Clients", admin.counts.clients),
     metric("Active projects", admin.counts.activeProjects),
@@ -2677,7 +2893,7 @@ async function handleAccessLink(event) {
     const payload = Object.fromEntries(new FormData(event.currentTarget).entries());
     const data = await api("/api/portal/request-access-link", { method: "POST", body: JSON.stringify(payload) });
     status.textContent = data.message || "Help link created.";
-    output.value = data.accessUrl || "";
+    output.value = data.accessUrl || (data.accessEmailSent ? "Access link sent by email." : "");
   } catch (error) {
     status.textContent = error.message;
   }
@@ -2746,9 +2962,56 @@ async function handleUserInvite(event) {
   const payload = Object.fromEntries(new FormData(event.currentTarget).entries());
   payload.clientId = activeClientId();
   const data = await api("/api/portal/users", { method: "POST", body: JSON.stringify(payload) });
-  qs("[data-invite-output]").value = data.inviteUrl;
+  qs("[data-invite-output]").value = data.inviteUrl || data.message || "Invite created.";
   event.currentTarget.reset();
-  showToast("Invite created.");
+  showToast(data.message || "Invite created.");
+}
+
+async function postAccessAction(payload, successMessage) {
+  await api("/api/portal/access", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+  showToast(successMessage);
+  await loadAccess();
+}
+
+async function handleAccessGroupCreate(event) {
+  event.preventDefault();
+  const payload = Object.fromEntries(new FormData(event.currentTarget).entries());
+  payload.action = "create_group";
+  await postAccessAction(payload, "Access group created.");
+  event.currentTarget.reset();
+  renderAccessControls();
+}
+
+async function handleAccessMemberCreate(event) {
+  event.preventDefault();
+  const payload = Object.fromEntries(new FormData(event.currentTarget).entries());
+  payload.action = "add_member";
+  await postAccessAction(payload, "User added to group.");
+  event.currentTarget.reset();
+  renderAccessControls();
+}
+
+async function handleAccessPolicyCreate(event) {
+  event.preventDefault();
+  const payload = Object.fromEntries(new FormData(event.currentTarget).entries());
+  payload.action = "create_policy";
+  payload.clientId = activeClientId();
+  await postAccessAction(payload, "Access policy added.");
+  event.currentTarget.reset();
+  renderAccessControls();
+}
+
+async function handleAccessGrantCreate(event) {
+  event.preventDefault();
+  const payload = Object.fromEntries(new FormData(event.currentTarget).entries());
+  payload.action = "create_grant";
+  payload.clientId = activeClientId();
+  await postAccessAction(payload, "Record access grant added.");
+  event.currentTarget.reset();
+  renderAccessControls();
 }
 
 async function handleSearch(event) {
@@ -2812,6 +3075,7 @@ qs("[data-meeting-transcript-form]")?.addEventListener("submit", handleMeetingTr
 qs("[data-meeting-scout-refresh]")?.addEventListener("click", () => {
   refreshMeetingScout().catch((error) => setStatus(error.message || "Could not refresh meeting notes.", true));
 });
+qs("[data-meeting-scout-finalize]")?.addEventListener("click", handleMeetingTranscriptFinalize);
 qs("[data-task-detail-modal]")?.addEventListener("click", (event) => {
   if (event.target === event.currentTarget) closeTaskDetail();
 });
@@ -2915,6 +3179,19 @@ qs("[data-document-dropzone]")?.addEventListener("drop", (event) => {
 qs("[data-ai-form]")?.addEventListener("submit", handleAi);
 qs("[data-client-form]")?.addEventListener("submit", handleClientCreate);
 qs("[data-user-form]")?.addEventListener("submit", handleUserInvite);
+qs("[data-access-group-form]")?.addEventListener("submit", handleAccessGroupCreate);
+qs("[data-access-member-form]")?.addEventListener("submit", handleAccessMemberCreate);
+qs("[data-access-policy-form]")?.addEventListener("submit", handleAccessPolicyCreate);
+qs("[data-access-grant-form]")?.addEventListener("submit", handleAccessGrantCreate);
+qs("[data-access-subject-type]")?.addEventListener("change", renderAccessSubjectOptions);
+qs("[data-access-summary]")?.addEventListener("click", (event) => {
+  const member = event.target.closest("[data-access-delete-member]");
+  const policy = event.target.closest("[data-access-delete-policy]");
+  const grant = event.target.closest("[data-access-delete-grant]");
+  if (member) postAccessAction({ action: "remove_member", membershipId: member.dataset.accessDeleteMember }, "Group member removed.").catch((error) => setStatus(error.message, true));
+  if (policy) postAccessAction({ action: "delete_policy", policyId: policy.dataset.accessDeletePolicy }, "Policy deleted.").catch((error) => setStatus(error.message, true));
+  if (grant) postAccessAction({ action: "delete_grant", grantId: grant.dataset.accessDeleteGrant }, "Record grant deleted.").catch((error) => setStatus(error.message, true));
+});
 qs("[data-global-search]")?.addEventListener("input", handleSearch);
 qs("[data-client-picker]")?.addEventListener("change", reloadWorkspace);
 qs("[data-mobile-nav-toggle]")?.addEventListener("click", () => {

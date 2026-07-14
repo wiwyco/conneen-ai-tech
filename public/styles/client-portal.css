@@ -436,6 +436,67 @@ label {
   gap: 16px;
 }
 
+.access-panel {
+  display: grid;
+  gap: 16px;
+  margin: 16px 0;
+}
+
+.access-panel .panel-heading p {
+  color: var(--muted);
+  margin: -8px 0 0;
+}
+
+.access-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 14px;
+}
+
+.access-grid form,
+.access-summary-column {
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: #fff;
+  padding: 14px;
+}
+
+.access-grid h3,
+.access-summary-column h3 {
+  font-size: 0.9rem;
+  margin: 0 0 10px;
+}
+
+.access-summary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(220px, 1fr));
+  gap: 14px;
+}
+
+.access-summary-column {
+  display: grid;
+  gap: 10px;
+}
+
+.access-summary-column article {
+  display: grid;
+  gap: 6px;
+  border-top: 1px solid var(--line);
+  padding-top: 10px;
+}
+
+.access-summary-column article:first-of-type {
+  border-top: 0;
+  padding-top: 0;
+}
+
+.access-summary-column span {
+  color: var(--muted);
+  font-size: 0.82rem;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
 .knowledge-library {
   display: grid;
   gap: 12px;

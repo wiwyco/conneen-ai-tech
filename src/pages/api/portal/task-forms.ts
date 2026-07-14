@@ -2,6 +2,7 @@ import type { APIRoute } from "astro";
 import { logAudit, logTimeline } from "../../../lib/portal/activity";
 import { canAccessClient, requirePortalAuth } from "../../../lib/portal/auth";
 import { cleanText, jsonResponse, readJson } from "../../../lib/portal/http";
+import { canPortalAction } from "../../../lib/portal/permissions";
 import { eq, insertRow, selectOne, updateRows } from "../../../lib/portal/supabase";
 
 export const prerender = false;
@@ -53,6 +54,9 @@ export const POST: APIRoute = async ({ request }) => {
     if (!auth.isAdmin && task.visibility === "internal") return jsonResponse({ error: "Forbidden." }, 403);
     if (!auth.isAdmin && task.assigned_to && task.assigned_to !== auth.user.id) {
       return jsonResponse({ error: "Only the assigned user can complete this form." }, 403);
+    }
+    if (!await canPortalAction(auth, { section: "tasks", action: "complete_form", clientId, projectId: task.project_id, recordId: task.id, record: task })) {
+      return jsonResponse({ error: "Forbidden." }, 403);
     }
     if (task.form_response || task.completed_at || ["complete", "completed", "done"].includes(String(task.status || "").toLowerCase())) {
       return jsonResponse({ error: "This form has already been submitted." }, 409);

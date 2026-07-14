@@ -1,5 +1,7 @@
 import type { APIRoute } from "astro";
 import { provisionPortalFromLead } from "../../lib/portal/provisioning";
+import { verifyLeadCaptcha } from "../../lib/portal/captcha";
+import { enforceRateLimit, RATE_LIMITS } from "../../lib/portal/rate-limit";
 
 export const prerender = false;
 
@@ -17,6 +19,9 @@ type LeadRequest = {
   source?: unknown;
   messages?: unknown;
   pagePath?: unknown;
+  captchaToken?: unknown;
+  turnstileToken?: unknown;
+  "cf-turnstile-response"?: unknown;
 };
 
 const MAX_MESSAGES = 18;
@@ -183,7 +188,7 @@ async function sendLeadEmail({
              <p><strong>Client ID:</strong> ${escapeHtml(portalProvision.clientId || "")}</p>
              <p><strong>Project ID:</strong> ${escapeHtml(portalProvision.projectId || "Not created")}</p>
              <p><strong>Invite sent:</strong> ${portalProvision.inviteEmailSent ? "Yes" : "No"}</p>
-             <p><strong>Invite link:</strong><br>${escapeHtml(portalProvision.inviteUrl || "")}</p>`
+             <p><strong>Invite link returned in API:</strong> ${portalProvision.inviteUrl ? "Yes (development/local mode)" : "No"}</p>`
           : ""
       }
       <h3>Transcript</h3>
@@ -234,6 +239,25 @@ export const POST: APIRoute = async ({ request }) => {
     if (!email || !EMAIL_RE.test(email)) {
       return new Response(JSON.stringify({ error: "A valid email is required." }), {
         status: 400,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+    const limited = await enforceRateLimit({
+      request,
+      route: "lead_capture",
+      subject: email,
+      ...RATE_LIMITS.lead,
+    });
+    if (limited) return limited;
+
+    const captchaToken =
+      cleanText(body?.captchaToken, 4096) ||
+      cleanText(body?.turnstileToken, 4096) ||
+      cleanText(body?.["cf-turnstile-response"], 4096);
+    const captcha = await verifyLeadCaptcha({ token: captchaToken, request });
+    if (!captcha.ok) {
+      return new Response(JSON.stringify({ error: captcha.error }), {
+        status: captcha.status,
         headers: { "Content-Type": "application/json" },
       });
     }

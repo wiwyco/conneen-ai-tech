@@ -1,7 +1,13 @@
 ---
+const turnstileSiteKey = import.meta.env.PUBLIC_TURNSTILE_SITE_KEY || "";
 ---
 
-<section class="chat-shell" id="chat-shell" aria-label="Scout, Conneen AI workflow diagnostic chat">
+<section
+  class="chat-shell"
+  id="chat-shell"
+  aria-label="Scout, Conneen AI workflow diagnostic chat"
+  data-turnstile-site-key={turnstileSiteKey}
+>
   <div class="chat-panel">
     <header class="chat-header">
       <div class="chat-identity">
@@ -32,6 +38,16 @@
           placeholder="Scout's brief: costly task, tools/data involved, likely assist, and human review points..."
           required
         ></textarea>
+        {
+          turnstileSiteKey && (
+            <div
+              class="turnstile-widget"
+              data-turnstile-widget
+              data-turnstile-form="chat"
+              aria-label="Lead submission verification"
+            />
+          )
+        }
         <div class="lead-actions">
           <button id="lead-draft-button" type="button">Ask Scout to draft</button>
           <button id="lead-submit-button" type="submit">Send brief</button>

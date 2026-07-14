@@ -37,6 +37,7 @@ const page = document.getElementById("page");
 
   const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   const LEAD_PANE_MARKER = "[[OPEN_LEAD_PANE]]";
+  const turnstileSiteKey = chatShell.dataset.turnstileSiteKey || siteShell.dataset.turnstileSiteKey || "";
   let visitorFirstName = "";
 
   const state = {
@@ -70,6 +71,83 @@ const page = document.getElementById("page");
     goSiteFrameVisible: false,
     leadPaneOpen: false,
   };
+
+  const turnstileState = {
+    loadPromise: null,
+    widgetIds: new Map(),
+    tokens: new Map(),
+  };
+
+  function loadTurnstile() {
+    if (!turnstileSiteKey) return Promise.resolve(null);
+    if (window.turnstile) return Promise.resolve(window.turnstile);
+    if (turnstileState.loadPromise) return turnstileState.loadPromise;
+
+    turnstileState.loadPromise = new Promise((resolve, reject) => {
+      const existing = document.querySelector("script[data-turnstile-script]");
+      if (existing) {
+        existing.addEventListener("load", () => resolve(window.turnstile || null), { once: true });
+        existing.addEventListener("error", () => reject(new Error("Could not load verification challenge.")), { once: true });
+        return;
+      }
+
+      const script = document.createElement("script");
+      script.src = "https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit";
+      script.async = true;
+      script.defer = true;
+      script.dataset.turnstileScript = "true";
+      script.onload = () => resolve(window.turnstile || null);
+      script.onerror = () => reject(new Error("Could not load verification challenge."));
+      document.head.appendChild(script);
+    });
+
+    return turnstileState.loadPromise;
+  }
+
+  async function renderTurnstileWidgets() {
+    if (!turnstileSiteKey) return;
+
+    const turnstile = await loadTurnstile();
+    if (!turnstile?.render) return;
+
+    document.querySelectorAll("[data-turnstile-widget]").forEach((widget) => {
+      const formKey = widget.dataset.turnstileForm || "lead";
+      if (turnstileState.widgetIds.has(formKey)) return;
+      if (!widget.getClientRects().length) return;
+
+      const widgetId = turnstile.render(widget, {
+        sitekey: turnstileSiteKey,
+        callback: (token) => {
+          turnstileState.tokens.set(formKey, token);
+        },
+        "expired-callback": () => {
+          turnstileState.tokens.delete(formKey);
+        },
+        "error-callback": () => {
+          turnstileState.tokens.delete(formKey);
+        },
+      });
+
+      turnstileState.widgetIds.set(formKey, widgetId);
+    });
+  }
+
+  async function getLeadCaptchaToken(formKey) {
+    if (!turnstileSiteKey) return "";
+    await renderTurnstileWidgets();
+    return turnstileState.tokens.get(formKey) || "";
+  }
+
+  function resetLeadCaptcha(formKey) {
+    if (!turnstileSiteKey) return;
+
+    const widgetId = turnstileState.widgetIds.get(formKey);
+    turnstileState.tokens.delete(formKey);
+
+    if (window.turnstile?.reset && widgetId !== undefined) {
+      window.turnstile.reset(widgetId);
+    }
+  }
 
   function resize() {
     state.dpr = Math.min(window.devicePixelRatio || 1, 1.5);
@@ -294,6 +372,7 @@ const page = document.getElementById("page");
 
       siteShell.classList.add("visible");
       siteShell.classList.remove("fading-out");
+      renderTurnstileWidgets().catch(() => {});
 
       // Keep the transition logo pinned at the top-left instead of hiding it.
       logoTransition.classList.add("visible", "fly-home");
@@ -353,6 +432,7 @@ const page = document.getElementById("page");
     leadCaptureForm.hidden = false;
     chatShell.classList.add("lead-open");
     state.borderRevealStartedAt = performance.now();
+    renderTurnstileWidgets().catch(() => {});
   }
 
   function closeLeadPane() {
@@ -1076,6 +1156,7 @@ const page = document.getElementById("page");
     );
 
     try {
+      payload.captchaToken = await getLeadCaptchaToken("chat");
       const res = await fetch("/api/leads", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -1106,6 +1187,7 @@ const page = document.getElementById("page");
           : "I could not save the diagnostic brief. Please email wiwyco@gmail.com directly."
       );
     } finally {
+      resetLeadCaptcha("chat");
       leadSubmitButton.disabled = false;
       leadSubmitButton.textContent = "Send brief";
       chatInput.focus();
@@ -1223,6 +1305,7 @@ const page = document.getElementById("page");
     siteLeadStatus.textContent = "";
 
     try {
+      payload.captchaToken = await getLeadCaptchaToken("site");
       const res = await fetch("/api/leads", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -1246,6 +1329,7 @@ const page = document.getElementById("page");
           ? error.message
           : "Could not send the workflow brief. Please email wiwyco@gmail.com directly.";
     } finally {
+      resetLeadCaptcha("site");
       siteLeadSubmitButton.disabled = false;
       siteLeadSubmitButton.textContent = "Send workflow brief";
     }
