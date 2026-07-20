@@ -42,6 +42,37 @@ const turnstileSiteKey = import.meta.env.PUBLIC_TURNSTILE_SITE_KEY || "";
           <button class="site-button primary return-chat-trigger" type="button">Ask Scout to diagnose it</button>
           <a class="site-button" href="#pilots">See what this looks like</a>
         </div>
+        <form class="site-lead-form hero-lead-form" data-site-lead-form>
+          <strong>Send the rough version</strong>
+          <p>
+            A first pass is enough: the repeated job, where the information comes from, and what needs to happen at the end.
+          </p>
+          <div class="site-lead-fields">
+            <input name="name" type="text" placeholder="Name" autocomplete="name" />
+            <input name="email" type="email" placeholder="Email" autocomplete="email" required />
+            <input name="company" type="text" placeholder="Company" autocomplete="organization" />
+            <textarea
+              name="workflow"
+              placeholder="Describe one job your team repeats, what slows it down, and what you wish was easier."
+              required
+            ></textarea>
+          </div>
+          {
+            turnstileSiteKey && (
+              <div
+                class="turnstile-widget"
+                data-turnstile-widget
+                data-turnstile-form="site-top"
+                aria-label="Lead submission verification"
+              />
+            )
+          }
+          <div class="site-lead-actions">
+            <button class="site-button primary" data-site-lead-submit type="submit">Send the process</button>
+            <button class="site-button return-chat-trigger" type="button">Ask Scout</button>
+          </div>
+          <p class="site-lead-status" data-site-lead-status role="status" aria-live="polite"></p>
+        </form>
       </div>
 
       <aside class="consulting-panel" aria-label="Pilot planning preview">
@@ -309,7 +340,7 @@ const turnstileSiteKey = import.meta.env.PUBLIC_TURNSTILE_SITE_KEY || "";
           </div>
           <div class="contact-row">
             <span>Email</span>
-            <a href="mailto:wiwyco@gmail.com">wiwyco@gmail.com</a>
+            <a href="mailto:winslow@conneenai.tech">winslow@conneenai.tech</a>
           </div>
           <div class="contact-row">
             <span>Location</span>
@@ -317,7 +348,7 @@ const turnstileSiteKey = import.meta.env.PUBLIC_TURNSTILE_SITE_KEY || "";
           </div>
         </div>
 
-        <form class="contact-card site-lead-form" id="site-lead-form">
+        <form class="contact-card site-lead-form" data-site-lead-form>
           <strong>Send the rough version</strong>
           <p>
             A good first message: "We spend X hours a week on Y. The information comes from A/B/C. We need Z at the end. The part that breaks most often is..."
@@ -337,16 +368,16 @@ const turnstileSiteKey = import.meta.env.PUBLIC_TURNSTILE_SITE_KEY || "";
               <div
                 class="turnstile-widget"
                 data-turnstile-widget
-                data-turnstile-form="site"
+                data-turnstile-form="site-contact"
                 aria-label="Lead submission verification"
               />
             )
           }
           <div class="site-lead-actions">
-            <button class="site-button primary" id="site-lead-submit-button" type="submit">Send the process</button>
+            <button class="site-button primary" data-site-lead-submit type="submit">Send the process</button>
             <button class="site-button return-chat-trigger" type="button">Ask Scout</button>
           </div>
-          <p class="site-lead-status" id="site-lead-status" role="status" aria-live="polite"></p>
+          <p class="site-lead-status" data-site-lead-status role="status" aria-live="polite"></p>
         </form>
       </div>
     </section>

@@ -27,9 +27,7 @@ const page = document.getElementById("page");
   const leadGoSiteButton = document.getElementById("lead-go-site-button");
   const leadPortalLink = document.getElementById("lead-portal-link");
   const leadThanksMessage = document.getElementById("lead-thanks-message");
-  const siteLeadForm = document.getElementById("site-lead-form");
-  const siteLeadSubmitButton = document.getElementById("site-lead-submit-button");
-  const siteLeadStatus = document.getElementById("site-lead-status");
+  const siteLeadForms = document.querySelectorAll("[data-site-lead-form]");
   const goSiteHotspot = document.getElementById("go-site-hotspot");
   const siteShell = document.getElementById("site-shell");
   const logoTransition = document.getElementById("logo-transition");
@@ -1184,7 +1182,7 @@ const page = document.getElementById("page");
         "assistant",
         error instanceof Error
           ? error.message
-          : "I could not save the diagnostic brief. Please email wiwyco@gmail.com directly."
+          : "I could not save the diagnostic brief. Please email winslow@conneenai.tech directly."
       );
     } finally {
       resetLeadCaptcha("chat");
@@ -1287,52 +1285,67 @@ const page = document.getElementById("page");
     }
   });
 
-  siteLeadForm.addEventListener("submit", async (event) => {
-    event.preventDefault();
+  siteLeadForms.forEach((siteLeadForm) => {
+    siteLeadForm.addEventListener("submit", async (event) => {
+      event.preventDefault();
 
-    const formData = new FormData(siteLeadForm);
-    const payload = {
-      source: "site_contact_form",
-      name: String(formData.get("name") || ""),
-      email: String(formData.get("email") || ""),
-      company: String(formData.get("company") || ""),
-      workflow: String(formData.get("workflow") || ""),
-      pagePath: window.location.pathname,
-    };
+      const formData = new FormData(siteLeadForm);
+      const payload = {
+        source: "site_contact_form",
+        name: String(formData.get("name") || ""),
+        email: String(formData.get("email") || ""),
+        company: String(formData.get("company") || ""),
+        workflow: String(formData.get("workflow") || ""),
+        pagePath: window.location.pathname,
+      };
+      const siteLeadSubmitButton = siteLeadForm.querySelector("[data-site-lead-submit]");
+      const siteLeadStatus = siteLeadForm.querySelector("[data-site-lead-status]");
+      const turnstileWidget = siteLeadForm.querySelector("[data-turnstile-form]");
+      const turnstileFormKey = turnstileWidget?.dataset.turnstileForm || "site";
+      const defaultButtonText = siteLeadSubmitButton?.textContent || "Send workflow brief";
 
-    siteLeadSubmitButton.disabled = true;
-    siteLeadSubmitButton.textContent = "Sending";
-    siteLeadStatus.textContent = "";
+      if (siteLeadSubmitButton) {
+        siteLeadSubmitButton.disabled = true;
+        siteLeadSubmitButton.textContent = "Sending";
+      }
+      if (siteLeadStatus) siteLeadStatus.textContent = "";
 
-    try {
-      payload.captchaToken = await getLeadCaptchaToken("site");
-      const res = await fetch("/api/leads", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
+      try {
+        payload.captchaToken = await getLeadCaptchaToken(turnstileFormKey);
+        const res = await fetch("/api/leads", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
 
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Lead capture failed.");
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || "Lead capture failed.");
 
-      siteLeadStatus.textContent = data.portalProvision?.inviteEmailSent
-        ? "Workflow brief saved. Scout created your workspace and sent a portal invite to your email."
-        : data.portalProvision?.inviteUrl
-          ? `Workflow brief saved. Scout created your workspace. Local invite link: ${data.portalProvision.inviteUrl}`
-          : data.emailSent
-            ? "Workflow brief sent. Conneen AI will follow up from wiwyco@gmail.com."
-            : "Workflow brief saved. Email notification could not be sent, but the lead is stored.";
-      siteLeadForm.reset();
-    } catch (error) {
-      siteLeadStatus.textContent =
-        error instanceof Error
-          ? error.message
-          : "Could not send the workflow brief. Please email wiwyco@gmail.com directly.";
-    } finally {
-      resetLeadCaptcha("site");
-      siteLeadSubmitButton.disabled = false;
-      siteLeadSubmitButton.textContent = "Send workflow brief";
-    }
+        if (siteLeadStatus) {
+          siteLeadStatus.textContent = data.portalProvision?.inviteEmailSent
+            ? "Workflow brief saved. Scout created your workspace and sent a portal invite to your email."
+            : data.portalProvision?.inviteUrl
+              ? `Workflow brief saved. Scout created your workspace. Local invite link: ${data.portalProvision.inviteUrl}`
+              : data.emailSent
+                ? "Workflow brief sent. Conneen AI will follow up from winslow@conneenai.tech."
+                : "Workflow brief saved. Email notification could not be sent, but the lead is stored.";
+        }
+        siteLeadForm.reset();
+      } catch (error) {
+        if (siteLeadStatus) {
+          siteLeadStatus.textContent =
+            error instanceof Error
+              ? error.message
+              : "Could not send the workflow brief. Please email winslow@conneenai.tech directly.";
+        }
+      } finally {
+        resetLeadCaptcha(turnstileFormKey);
+        if (siteLeadSubmitButton) {
+          siteLeadSubmitButton.disabled = false;
+          siteLeadSubmitButton.textContent = defaultButtonText;
+        }
+      }
+    });
   });
 
   chatInput.addEventListener("keydown", (event) => {

@@ -142,7 +142,7 @@ Rules:
   - the user seems qualified and the next natural step is a concise inquiry brief
 - When it is time to open the inquiry pane, say that Scout can draft the inquiry from what was covered, then append this exact marker at the very end of the reply: [[OPEN_LEAD_PANE]]
 - Never show or explain the marker.
-- When the user seems qualified but the pane is not opened, offer to send the diagnostic brief to Conneen AI for follow-up, or invite them to email wiwyco@gmail.com.
+- When the user seems qualified but the pane is not opened, offer to send the diagnostic brief to Conneen AI for follow-up, or invite them to email winslow@conneenai.tech.
 `,
       input: messages.map((m) => ({
         role: m.role,

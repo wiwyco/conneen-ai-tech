@@ -29,7 +29,7 @@ const MAX_MESSAGE_CHARS = 2200;
 const EMAIL_TIMEOUT_MS = 8000;
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const PUBLIC_LEAD_ERROR =
-  "I could not save the diagnostic brief right now. Please email wiwyco@gmail.com directly.";
+  "I could not save the diagnostic brief right now. Please email winslow@conneenai.tech directly.";
 
 function getEnv(name: string): string | undefined {
   return import.meta.env[name] || process.env[name];
@@ -176,7 +176,7 @@ async function sendLeadEmail({
   portalProvision?: Record<string, any> | null;
 }): Promise<boolean> {
   const resendApiKey = getEnv("RESEND_API_KEY");
-  const to = getEnv("LEAD_NOTIFY_EMAIL") || "wiwyco@gmail.com";
+  const to = getEnv("LEAD_NOTIFY_EMAIL") || "winslow@conneenai.tech";
   const from = getEnv("LEAD_FROM_EMAIL");
 
   if (!resendApiKey || !from) {
