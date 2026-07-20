@@ -28,6 +28,8 @@ const MAX_MESSAGES = 18;
 const MAX_MESSAGE_CHARS = 2200;
 const EMAIL_TIMEOUT_MS = 8000;
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const PUBLIC_LEAD_ERROR =
+  "I could not save the diagnostic brief right now. Please email wiwyco@gmail.com directly.";
 
 function getEnv(name: string): string | undefined {
   return import.meta.env[name] || process.env[name];
@@ -125,16 +127,29 @@ async function insertLead(payload: Record<string, unknown>) {
     throw new Error("Supabase server environment variables are missing.");
   }
 
-  const response = await fetch(`${supabaseUrl.replace(/\/$/, "")}/rest/v1/diagnostic_leads`, {
-    method: "POST",
-    headers: {
-      apikey: supabaseKey,
-      Authorization: `Bearer ${supabaseKey}`,
-      "Content-Type": "application/json",
-      Prefer: "return=representation",
-    },
-    body: JSON.stringify(payload),
-  });
+  let leadUrl: URL;
+  try {
+    leadUrl = new URL("/rest/v1/diagnostic_leads", supabaseUrl.replace(/\/$/, ""));
+  } catch {
+    throw new Error("SUPABASE_URL is invalid. It must include the full https:// project URL.");
+  }
+
+  let response: Response;
+  try {
+    response = await fetch(leadUrl, {
+      method: "POST",
+      headers: {
+        apikey: supabaseKey,
+        Authorization: `Bearer ${supabaseKey}`,
+        "Content-Type": "application/json",
+        Prefer: "return=representation",
+      },
+      body: JSON.stringify(payload),
+    });
+  } catch (error) {
+    console.error("Supabase lead insert request failed:", error);
+    throw new Error("Lead database is temporarily unreachable.");
+  }
 
   if (!response.ok) {
     const text = await response.text().catch(() => "");
@@ -304,23 +319,49 @@ export const POST: APIRoute = async ({ request }) => {
       page_path: cleanText(body?.pagePath, 500),
     };
 
-    const lead = await insertLead(leadPayload);
+    let lead: Record<string, any> | null = null;
+    let leadStorageError: string | null = null;
     let portalProvision: Record<string, any> | null = null;
     let portalProvisionError: string | null = null;
 
     try {
-      portalProvision = await provisionPortalFromLead({
-        ...(lead || leadPayload),
-        transcript: siteMessages,
-      } as any);
+      lead = await insertLead(leadPayload);
     } catch (error) {
-      portalProvisionError = error instanceof Error ? error.message : "Portal provisioning failed.";
-      console.error("Portal provisioning failed:", error);
+      leadStorageError = error instanceof Error ? error.message : "Lead database insert failed.";
+      console.error("Lead storage failed:", error);
+    }
+
+    if (lead) {
+      try {
+        portalProvision = await provisionPortalFromLead({
+          ...lead,
+          transcript: siteMessages,
+        } as any);
+      } catch (error) {
+        portalProvisionError = error instanceof Error ? error.message : "Portal provisioning failed.";
+        console.error("Portal provisioning failed:", error);
+      }
+    } else {
+      portalProvisionError = "Portal provisioning skipped because the lead was not saved to the database.";
     }
 
     const emailSent = await sendLeadEmail({ lead: lead || leadPayload, transcript, portalProvision });
 
-    return new Response(JSON.stringify({ ok: true, leadId: lead?.id, emailSent, portalProvision, portalProvisionError }), {
+    if (!lead && !emailSent) {
+      return new Response(JSON.stringify({ error: PUBLIC_LEAD_ERROR, leadStorageError }), {
+        status: 503,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+
+    return new Response(JSON.stringify({
+      ok: true,
+      leadId: lead?.id,
+      emailSent,
+      portalProvision,
+      portalProvisionError,
+      leadStorageError,
+    }), {
       status: 200,
       headers: { "Content-Type": "application/json" },
     });
@@ -328,7 +369,7 @@ export const POST: APIRoute = async ({ request }) => {
     console.error(err);
     return new Response(
       JSON.stringify({
-        error: err instanceof Error ? err.message : "Lead capture failed.",
+        error: PUBLIC_LEAD_ERROR,
       }),
       {
       status: 500,
