@@ -17,7 +17,20 @@ const turnstileSiteKey = import.meta.env.PUBLIC_TURNSTILE_SITE_KEY || "";
       <img class="brand-logo-image" src="/assets/conneen-ai-logo.png" alt="Conneen AI Consulting" />
     </a>
 
-    <nav class="site-nav" aria-label="Primary navigation">
+    <button
+      class="site-menu-toggle"
+      id="site-menu-toggle"
+      type="button"
+      aria-label="Open navigation menu"
+      aria-controls="site-nav"
+      aria-expanded="false"
+    >
+      <span></span>
+      <span></span>
+      <span></span>
+    </button>
+
+    <nav class="site-nav" id="site-nav" aria-label="Primary navigation">
       <a href="#problems">Daily work</a>
       <a href="#pilots">Examples</a>
       <a href="#process">How it works</a>

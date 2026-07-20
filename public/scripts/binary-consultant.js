@@ -30,6 +30,9 @@ const page = document.getElementById("page");
   const siteLeadForms = document.querySelectorAll("[data-site-lead-form]");
   const goSiteHotspot = document.getElementById("go-site-hotspot");
   const siteShell = document.getElementById("site-shell");
+  const siteHeader = siteShell.querySelector(".site-header");
+  const siteMenuToggle = document.getElementById("site-menu-toggle");
+  const siteNav = document.getElementById("site-nav");
   const logoTransition = document.getElementById("logo-transition");
   const returnChatTriggers = document.querySelectorAll(".return-chat-trigger");
 
@@ -147,6 +150,14 @@ const page = document.getElementById("page");
     }
   }
 
+  function setSiteMenuOpen(open) {
+    siteHeader?.classList.toggle("menu-open", open);
+    if (siteMenuToggle) {
+      siteMenuToggle.setAttribute("aria-expanded", open ? "true" : "false");
+      siteMenuToggle.setAttribute("aria-label", open ? "Close navigation menu" : "Open navigation menu");
+    }
+  }
+
   function resize() {
     state.dpr = Math.min(window.devicePixelRatio || 1, 1.5);
     state.width = window.innerWidth;
@@ -205,6 +216,7 @@ const page = document.getElementById("page");
     }
 
     positionGoSiteHotspot();
+    if (!state.isMobile) setSiteMenuOpen(false);
   }
 
   function addWave(x, y) {
@@ -1356,6 +1368,15 @@ const page = document.getElementById("page");
   });
 
   goSiteHotspot.addEventListener("click", beginSiteTransition);
+  siteMenuToggle?.addEventListener("click", () => {
+    setSiteMenuOpen(!siteHeader?.classList.contains("menu-open"));
+  });
+  siteNav?.addEventListener("click", (event) => {
+    if (event.target.closest("a, button")) setSiteMenuOpen(false);
+  });
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") setSiteMenuOpen(false);
+  });
   returnChatTriggers.forEach((button) => {
     button.addEventListener("click", (event) => {
       event.stopPropagation();
