@@ -3,6 +3,7 @@ import crypto from "node:crypto";
 import fs from "node:fs/promises";
 import path from "node:path";
 import test from "node:test";
+import { pathToFileURL } from "node:url";
 import ts from "typescript";
 
 const root = process.cwd();
@@ -209,11 +210,7 @@ async function transpileSrc(dir = srcRoot) {
 }
 
 async function importBuilt(relativePath) {
-  return import(pathToFileUrl(path.join(buildRoot, relativePath)));
-}
-
-function pathToFileUrl(filePath) {
-  return new URL(`file:///${filePath.replace(/\\/g, "/")}`).href;
+  return import(pathToFileURL(path.join(buildRoot, relativePath)).href);
 }
 
 function jsonRequest(body, token = adminToken) {
