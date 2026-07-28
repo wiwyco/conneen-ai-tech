@@ -1,4 +1,5 @@
 import crypto from "node:crypto";
+import { isProduction } from "./env";
 import { cleanEmail, parseCookie } from "./http";
 import { eq, insertRow, selectOne, updateRows } from "./supabase";
 
@@ -72,11 +73,13 @@ export async function verifyPassword(password: string, storedHash: string | null
 }
 
 export function sessionCookie(token: string, maxAgeSeconds = 60 * 60 * 24 * 7): string {
-  return `${PORTAL_SESSION_COOKIE}=${encodeURIComponent(token)}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${maxAgeSeconds}`;
+  const secure = isProduction() ? "; Secure" : "";
+  return `${PORTAL_SESSION_COOKIE}=${encodeURIComponent(token)}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${maxAgeSeconds}${secure}`;
 }
 
 export function clearSessionCookie(): string {
-  return `${PORTAL_SESSION_COOKIE}=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0`;
+  const secure = isProduction() ? "; Secure" : "";
+  return `${PORTAL_SESSION_COOKIE}=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0${secure}`;
 }
 
 export async function createSession(user: PortalUser, request: Request): Promise<string> {

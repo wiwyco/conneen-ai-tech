@@ -1,0 +1,50 @@
+{
+  "generatedAt": "2026-07-28T05:05:24.043Z",
+  "note": "Frozen Supabase schema/migration manifest. Run npm run check:supabase-freeze before deployment.",
+  "migrations": [
+    {
+      "version": "20260517000000",
+      "name": "diagnostic_leads",
+      "source": "supabase/diagnostic_leads.sql",
+      "frozen": "supabase/migrations/20260517000000_diagnostic_leads.sql",
+      "sourceSha256": "a34a166895f2c375ba5dd9bc5e096fb9395601b82c4121f8eeda06727b8882b4",
+      "frozenSha256": "83e193770f7f47cc7cb1bbedaa5ac0e85ee9bafd8fa70c07323f373acad13e44"
+    },
+    {
+      "version": "20260526000000",
+      "name": "client_portal_base",
+      "source": "supabase/client_portal.sql",
+      "frozen": "supabase/migrations/20260526000000_client_portal_base.sql",
+      "sourceSha256": "9440988e0c995eef392f98010b7216bf74705e10ed1c691afa783c9a277565ab",
+      "frozenSha256": "4210637244136d626b945aae4d5bcd0b97993f1d49f3f70404b3ffe2ed1a2f42"
+    },
+    {
+      "version": "20260526000100",
+      "name": "client_portal_meeting_automation",
+      "source": "supabase/client_portal_meeting_automation_migration.sql",
+      "frozen": "supabase/migrations/20260526000100_client_portal_meeting_automation.sql",
+      "sourceSha256": "fd2e0b52d9d8da3c77d29dc91d8eb3e1e11dd9f183f061265c2cbaee44c89a8d",
+      "frozenSha256": "fb48e770c459f0966a49aa83a71fe7b1f676fa6821f0e4fcb8c8f6ea3314ae22"
+    },
+    {
+      "version": "20260601000000",
+      "name": "client_portal_permissions",
+      "source": "supabase/client_portal_permissions_migration.sql",
+      "frozen": "supabase/migrations/20260601000000_client_portal_permissions.sql",
+      "sourceSha256": "b0ac66981bc5e8e58c22d4b67c0d3446a73ecc0a6d893513d87e0a8d5d01561d",
+      "frozenSha256": "e83bf33911c6bd05c5ecb6ea56e6b4b9aefbacd3fab59d34f52f7eef0143f61b"
+    },
+    {
+      "version": "20260727000000",
+      "name": "website_analytics",
+      "source": "supabase/website_analytics.sql",
+      "frozen": "supabase/migrations/20260727000000_website_analytics.sql",
+      "sourceSha256": "2d57c219368327f9d7820d77731a1fb805488950fb0015ecac71b6f952608f25",
+      "frozenSha256": "f3fc050c2ff3e546b7b46275c0378e86a04a690aedb8c13723a11ee5c7be4c29"
+    }
+  ],
+  "combined": {
+    "file": "supabase/schema_freeze.sql",
+    "sha256": "95264fb5bd75cdf48d7316d9ff7aa4525510f8284ce57a19195222dd44c0c42f"
+  }
+}

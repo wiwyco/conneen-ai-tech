@@ -14,7 +14,7 @@ export class ProductionEnvError extends Error {
   }
 }
 
-function isProduction() {
+export function isProduction() {
   return getEnv("NODE_ENV") === "production" || getEnv("VERCEL_ENV") === "production";
 }
 
