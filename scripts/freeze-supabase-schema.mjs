@@ -34,6 +34,21 @@ const migrations = [
     name: "website_analytics",
     source: "website_analytics.sql",
   },
+  {
+    version: "20260727000100",
+    name: "ai_review_gates",
+    source: "ai_review_gates.sql",
+  },
+  {
+    version: "20260727000200",
+    name: "meeting_transcript_idempotency",
+    source: "meeting_transcript_idempotency.sql",
+  },
+  {
+    version: "20260727000300",
+    name: "app_error_events",
+    source: "app_error_events.sql",
+  },
 ];
 
 function sha256(text) {

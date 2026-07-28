@@ -1,6 +1,7 @@
 import type { PortalAuth } from "./auth";
 import { canAccessClient } from "./auth";
 import { cleanText } from "./http";
+import { isReviewPending } from "./reviewGates";
 import { eq, selectRows } from "./supabase";
 import { PORTAL_SECTION_SENSITIVITY } from "./tables";
 
@@ -159,6 +160,8 @@ export async function canPortalAction(
   const access = context || await loadPortalAccessContext(auth, clientId);
   const visibility = recordVisibility(request);
   const recordId = cleanText(request.recordId || request.record?.id, 80);
+
+  if (request.action === "read" && isReviewPending(request.record)) return false;
 
   if (recordId) {
     const matchingGrants = access.recordGrants.filter((grant) =>

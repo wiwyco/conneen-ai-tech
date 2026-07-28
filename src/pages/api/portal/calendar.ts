@@ -50,7 +50,7 @@ export const GET: APIRoute = async ({ request, url }) => {
     if (!canAccessClient(auth, clientId)) return jsonResponse({ error: "Forbidden." }, 403);
 
     const rows = await selectRows<any>("portal_calendar_events", {
-      select: "id,client_id,project_id,title,event_at,duration_minutes,event_type,location,meeting_provider,meeting_provider_id,meeting_url,meeting_password,meeting_join_instructions,scout_meeting_status,scout_live_transcript,scout_meeting_notes,scout_key_takeaways,scout_draft_deliverables,scout_live_responses,scout_is_addressed,scout_response_delivery,scout_latest_response,scout_latest_response_at,scout_stop_requested_at,scout_last_summary_at,notes,visibility,created_at",
+      select: "id,client_id,project_id,title,event_at,duration_minutes,event_type,location,meeting_provider,meeting_provider_id,meeting_url,meeting_password,meeting_join_instructions,scout_meeting_status,scout_live_transcript,scout_meeting_notes,scout_key_takeaways,scout_draft_deliverables,scout_live_responses,scout_is_addressed,scout_response_delivery,scout_latest_response,scout_latest_response_at,scout_stop_requested_at,scout_last_summary_at,scout_extraction_hash,scout_extraction_run_id,scout_extracted_at,notes,visibility,created_at",
       event_at: `gte.${new Date().toISOString()}`,
       order: order("event_at", true),
       limit: 500,
@@ -91,6 +91,9 @@ export const GET: APIRoute = async ({ request, url }) => {
         scout_latest_response_at: event.scout_latest_response_at,
         scout_stop_requested_at: event.scout_stop_requested_at,
         scout_last_summary_at: event.scout_last_summary_at,
+        scout_extraction_hash: event.scout_extraction_hash,
+        scout_extraction_run_id: event.scout_extraction_run_id,
+        scout_extracted_at: event.scout_extracted_at,
         notes: event.notes,
         visibility: event.visibility,
       }));

@@ -4,7 +4,9 @@ import { canAccessClient, requirePortalAuth } from "../../../lib/portal/auth";
 import { logAudit, logTimeline } from "../../../lib/portal/activity";
 import { getEnv } from "../../../lib/portal/env";
 import { cleanText, jsonResponse, readJson } from "../../../lib/portal/http";
+import { logErrorEvent } from "../../../lib/portal/logging";
 import { canPortalAction } from "../../../lib/portal/permissions";
+import { applyAiReviewGate } from "../../../lib/portal/reviewGates";
 import { insertRow } from "../../../lib/portal/supabase";
 
 export const prerender = false;
@@ -164,7 +166,7 @@ export const POST: APIRoute = async ({ request }) => {
     }
 
     const plan = await buildPlan(messages);
-    const project = await insertRow<any>("portal_projects", {
+    const project = await insertRow<any>("portal_projects", applyAiReviewGate("portal_projects", {
       client_id: clientId,
       name: cleanText(plan.project?.name, 240) || "New client project",
       scope: cleanText(plan.project?.scope, 8000) || null,
@@ -174,12 +176,12 @@ export const POST: APIRoute = async ({ request }) => {
       agile_stage: "discovery",
       status: "active",
       visibility: "shared",
-    });
+    }, "project_scout"));
 
     const milestones = [];
     for (const milestone of (plan.milestones || []).slice(0, 8)) {
       milestones.push(
-        await insertRow<any>("portal_milestones", {
+        await insertRow<any>("portal_milestones", applyAiReviewGate("portal_milestones", {
           client_id: clientId,
           project_id: project.id,
           name: cleanText(milestone.name, 240) || "Project milestone",
@@ -187,11 +189,11 @@ export const POST: APIRoute = async ({ request }) => {
           status: cleanText(milestone.status, 80) || "not started",
           due_date: cleanText(milestone.due_date, 40) || null,
           notes: cleanText(milestone.notes, 4000) || null,
-        })
+        }, "project_scout"))
       );
     }
 
-    const estimate = await insertRow<any>("portal_estimates", {
+    const estimate = await insertRow<any>("portal_estimates", applyAiReviewGate("portal_estimates", {
       client_id: clientId,
       project_id: project.id,
       title: cleanText(plan.estimate?.title, 240) || "Initial planning estimate",
@@ -204,9 +206,9 @@ export const POST: APIRoute = async ({ request }) => {
         "Rough planning estimate at $150/hr. Requires Conneen AI review and approval.",
       approval_status: "draft",
       visibility: "internal",
-    });
+    }, "project_scout"));
 
-    const payment = await insertRow<any>("portal_payments", {
+    const payment = await insertRow<any>("portal_payments", applyAiReviewGate("portal_payments", {
       client_id: clientId,
       project_id: project.id,
       title: cleanText(plan.payment?.title, 240) || "Initial milestone payment",
@@ -215,9 +217,9 @@ export const POST: APIRoute = async ({ request }) => {
       due_date: cleanText(plan.payment?.due_date, 40) || null,
       notes: cleanText(plan.payment?.notes, 4000) || "Placeholder pending approved scope and estimate.",
       visibility: "internal",
-    });
+    }, "project_scout"));
 
-    const invoice = await insertRow<any>("portal_invoices", {
+    const invoice = await insertRow<any>("portal_invoices", applyAiReviewGate("portal_invoices", {
       client_id: clientId,
       project_id: project.id,
       invoice_number: cleanText(plan.invoice?.invoice_number, 120) || "Draft",
@@ -226,9 +228,9 @@ export const POST: APIRoute = async ({ request }) => {
       due_date: cleanText(plan.invoice?.due_date, 40) || null,
       notes: cleanText(plan.invoice?.notes, 4000) || "Draft invoice placeholder.",
       visibility: "internal",
-    });
+    }, "project_scout"));
 
-    const contract = await insertRow<any>("portal_contracts", {
+    const contract = await insertRow<any>("portal_contracts", applyAiReviewGate("portal_contracts", {
       client_id: clientId,
       project_id: project.id,
       title: cleanText(plan.contract?.title, 240) || "Draft SOW",
@@ -236,7 +238,7 @@ export const POST: APIRoute = async ({ request }) => {
       status: cleanText(plan.contract?.status, 80) || "draft",
       notes: cleanText(plan.contract?.notes, 4000) || "Draft SOW placeholder.",
       visibility: "internal",
-    });
+    }, "project_scout"));
 
     await logAudit(auth, "project_scout_create", "portal_projects", project.id, clientId);
     await logTimeline(clientId, `Scout created project: ${project.name}`, {
@@ -244,11 +246,17 @@ export const POST: APIRoute = async ({ request }) => {
       eventType: "project_created",
       sourceTable: "portal_projects",
       sourceId: project.id,
-      visibility: "shared",
+      visibility: "internal",
     });
 
     return jsonResponse({ project, milestones, estimate, payment, invoice, contract });
   } catch (error) {
+    await logErrorEvent(request, {
+      area: "project_scout",
+      route: "/api/portal/project-scout",
+      message: "Project Scout failed.",
+      error,
+    });
     return jsonResponse({ error: error instanceof Error ? error.message : "Project Scout failed." }, 500);
   }
 };

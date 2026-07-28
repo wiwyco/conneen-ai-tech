@@ -5,7 +5,9 @@ import { authenticateRequest, canAccessClient } from "../../../lib/portal/auth";
 import { getClientContext } from "../../../lib/portal/ai";
 import { getEnv } from "../../../lib/portal/env";
 import { cleanText, jsonResponse, readJson } from "../../../lib/portal/http";
+import { logErrorEvent } from "../../../lib/portal/logging";
 import { canPortalAction } from "../../../lib/portal/permissions";
+import { applyAiReviewGate } from "../../../lib/portal/reviewGates";
 import { eq, insertRow, order, selectRows, updateRows } from "../../../lib/portal/supabase";
 
 export const prerender = false;
@@ -47,6 +49,14 @@ type MeetingExtractionPlan = {
   trainingMaterials?: Array<Record<string, unknown>>;
   changeRequests?: Array<Record<string, unknown>>;
   businessGoals?: Array<Record<string, unknown>>;
+};
+
+type MeetingExtractionSource = {
+  sourceTable: "portal_calendar_events";
+  sourceRecordId: string;
+  sourceHash: string;
+  sourceRunId: string;
+  itemCounts: Record<string, number>;
 };
 
 function isMeetingSecretOk(request: Request) {
@@ -157,6 +167,19 @@ function normalizeCommandText(text: string) {
 
 function fingerprint(value: string) {
   return crypto.createHash("sha256").update(value).digest("hex").slice(0, 10);
+}
+
+function extractionHash(eventId: string, lines: TranscriptLine[]) {
+  const normalized = lines
+    .map((line) => ({
+      speaker: cleanText(line.speaker, 80),
+      text: cleanText(line.text, 4000),
+      at: cleanText(line.at, 80),
+    }))
+    .filter((line) => line.text)
+    .map((line) => `${line.speaker}|${line.text}`)
+    .join("\n");
+  return crypto.createHash("sha256").update(`${eventId}\n${normalized}`).digest("hex");
 }
 
 function hasWakePhrase(text: string) {
@@ -450,8 +473,37 @@ function assigneeId(row: Record<string, unknown>, users: Awaited<ReturnType<type
   return clientOwned ? users.clientUser?.id || users.winslowUser?.id || null : users.winslowUser?.id || users.clientUser?.id || null;
 }
 
-async function insertMeetingRecord(table: string, payload: Record<string, unknown>, created: Record<string, any[]>) {
-  const row = await insertRow<any>(table, payload);
+async function findExistingMeetingRecord(table: string, source: MeetingExtractionSource) {
+  const sourceItemKey = `${table}:${(source.itemCounts[table] || 0) + 1}`;
+  const rows = await selectRows<any>(table, {
+    select: "*",
+    source_record_id: eq(source.sourceRecordId),
+    source_hash: eq(source.sourceHash),
+    source_item_key: eq(sourceItemKey),
+    generated_by: eq("meeting_scout"),
+    limit: 1,
+  }).catch(() => []);
+  return { existing: rows[0] || null, sourceItemKey };
+}
+
+async function insertMeetingRecord(
+  table: string,
+  payload: Record<string, unknown>,
+  created: Record<string, any[]>,
+  source: MeetingExtractionSource
+) {
+  const { existing, sourceItemKey } = await findExistingMeetingRecord(table, source);
+  source.itemCounts[table] = (source.itemCounts[table] || 0) + 1;
+  if (existing) return existing;
+
+  const row = await insertRow<any>(table, applyAiReviewGate(table, {
+    ...payload,
+    source_table: source.sourceTable,
+    source_record_id: source.sourceRecordId,
+    source_hash: source.sourceHash,
+    source_run_id: source.sourceRunId,
+    source_item_key: sourceItemKey,
+  }, "meeting_scout"));
   if (!created[table]) created[table] = [];
   created[table].push(row);
   return row;
@@ -462,11 +514,13 @@ async function injectMeetingObjects({
   clientId,
   event,
   plan,
+  source,
 }: {
   auth: Awaited<ReturnType<typeof authenticateRequest>>;
   clientId: string;
   event: any;
   plan: MeetingExtractionPlan;
+  source: MeetingExtractionSource;
 }) {
   const created: Record<string, any[]> = {};
   const warnings: string[] = [];
@@ -496,7 +550,7 @@ async function injectMeetingObjects({
       notes: cleanText(note.notes, 12000) || cleanText(event.scout_meeting_notes, 12000) || null,
       visibility: visibility(note.visibility),
       created_by: auth?.user.id || null,
-    }, created);
+    }, created, source);
   });
 
   for (const story of plan.userStories || []) {
@@ -511,7 +565,7 @@ async function injectMeetingObjects({
         status: cleanText(story.status, 40) || "proposed",
         acceptance_criteria: cleanText(story.acceptance_criteria, 4000) || null,
         visibility: visibility(story.visibility),
-      }, created);
+      }, created, source);
       requirementsByTitle.set(normalizeTitle(row.title), row);
     });
   }
@@ -536,7 +590,7 @@ async function injectMeetingObjects({
         visibility: visibility(task.visibility),
         assigned_to: assigneeId(task, users),
         created_by: auth?.user.id || null,
-      }, created);
+      }, created, source);
     });
   }
 
@@ -549,7 +603,7 @@ async function injectMeetingObjects({
         description: cleanText(item.description, 5000) || null,
         status: cleanText(item.status, 40) || "draft",
         visibility: visibility(item.visibility),
-      }, created);
+      }, created, source);
     });
   }
 
@@ -564,7 +618,7 @@ async function injectMeetingObjects({
         decided_by: cleanText(decision.decided_by, 300) || null,
         decided_at: normalizeDate(decision.decided_at) || today,
         visibility: visibility(decision.visibility),
-      }, created);
+      }, created, source);
     });
   }
 
@@ -578,7 +632,7 @@ async function injectMeetingObjects({
         status: cleanText(question.status, 40) || "open",
         answer: cleanText(question.answer, 3000) || null,
         visibility: visibility(question.visibility),
-      }, created);
+      }, created, source);
     });
   }
 
@@ -592,7 +646,7 @@ async function injectMeetingObjects({
         status: cleanText(milestone.status, 80) || "not started",
         due_date: normalizeDate(milestone.due_date),
         notes: cleanText(milestone.notes, 4000) || null,
-      }, created);
+      }, created, source);
     });
   }
 
@@ -609,7 +663,7 @@ async function injectMeetingObjects({
         assumptions: cleanText(estimate.assumptions, 5000) || null,
         approval_status: cleanText(estimate.approval_status, 80) || "draft",
         visibility: "internal",
-      }, created);
+      }, created, source);
     });
   }
 
@@ -623,7 +677,7 @@ async function injectMeetingObjects({
         severity: cleanText(risk.severity, 40) || "medium",
         mitigation: cleanText(risk.mitigation, 5000) || null,
         status: cleanText(risk.status, 40) || "open",
-      }, created);
+      }, created, source);
     });
   }
 
@@ -638,7 +692,7 @@ async function injectMeetingObjects({
         current_value: cleanText(metric.current_value, 1000) || null,
         measurement_method: cleanText(metric.measurement_method, 3000) || null,
         status: cleanText(metric.status, 40) || "tracking",
-      }, created);
+      }, created, source);
     });
   }
 
@@ -651,7 +705,7 @@ async function injectMeetingObjects({
         status: cleanText(request.status, 40) || "open",
         due_date: normalizeDate(request.due_date),
         requested_by: auth?.user.id || null,
-      }, created);
+      }, created, source);
     });
   }
 
@@ -666,7 +720,7 @@ async function injectMeetingObjects({
         safe_instructions: cleanText(system.safe_instructions, 5000) || null,
         integration_status: cleanText(system.integration_status, 80) || "not started",
         notes: cleanText(system.notes, 5000) || null,
-      }, created);
+      }, created, source);
     });
   }
 
@@ -680,7 +734,7 @@ async function injectMeetingObjects({
         description: cleanText(material.description, 5000) || null,
         url: cleanText(material.url, 2000) || null,
         visibility: visibility(material.visibility),
-      }, created);
+      }, created, source);
     });
   }
 
@@ -694,7 +748,7 @@ async function injectMeetingObjects({
         status: cleanText(change.status, 40) || "requested",
         impact_notes: cleanText(change.impact_notes, 5000) || null,
         approval_notes: cleanText(change.approval_notes, 5000) || null,
-      }, created);
+      }, created, source);
     });
   }
 
@@ -706,7 +760,7 @@ async function injectMeetingObjects({
         description: cleanText(goal.description, 5000) || null,
         status: cleanText(goal.status, 40) || "active",
         target_date: normalizeDate(goal.target_date),
-      }, created);
+      }, created, source);
     });
   }
 
@@ -721,7 +775,7 @@ async function injectMeetingObjects({
     source_table: "portal_calendar_events",
     source_id: event.id,
     visibility: "shared",
-  }, created);
+  }, created, source);
 
   return { created, createdCounts, warnings };
 }
@@ -756,6 +810,7 @@ export const POST: APIRoute = async ({ request }) => {
     let nextTranscript: TranscriptLine[] = shouldFinalize
       ? normalizeTranscriptInput(body, transcript)
       : transcript.slice(-180);
+    const currentExtractionHash = shouldFinalize ? extractionHash(eventId, nextTranscript) : "";
     const nextResponses: ScoutResponseLine[] = responses.slice(-80);
     let scoutIsAddressed = Boolean(event.scout_is_addressed);
     let responseDelivery: "voice" | "chat" = event.scout_response_delivery === "chat" ? "chat" : "voice";
@@ -775,6 +830,16 @@ export const POST: APIRoute = async ({ request }) => {
         scout: scoutOutput,
         createdCounts: {},
         warnings: ["This meeting has already been processed. Send force: true to process it again."],
+      });
+    }
+
+    if (shouldFinalize && event.scout_meeting_status === "complete" && event.scout_extraction_hash === currentExtractionHash) {
+      return jsonResponse({
+        event,
+        scout: scoutOutput,
+        createdCounts: {},
+        created: {},
+        warnings: ["This exact meeting transcript has already been processed. No duplicate records were created."],
       });
     }
 
@@ -847,6 +912,7 @@ export const POST: APIRoute = async ({ request }) => {
 
     const artifacts = await generateMeetingArtifacts(event, nextTranscript);
     let injection: Awaited<ReturnType<typeof injectMeetingObjects>> | null = null;
+    const extractionRunId = crypto.randomUUID();
     if (shouldFinalize) {
       const extractionPlan = await generateMeetingExtractionPlan({ clientId, event, lines: nextTranscript, artifacts });
       injection = await injectMeetingObjects({
@@ -854,13 +920,20 @@ export const POST: APIRoute = async ({ request }) => {
         clientId,
         event: { ...event, scout_meeting_notes: artifacts.notes },
         plan: extractionPlan,
+        source: {
+          sourceTable: "portal_calendar_events",
+          sourceRecordId: eventId,
+          sourceHash: currentExtractionHash,
+          sourceRunId: extractionRunId,
+          itemCounts: {},
+        },
       });
     }
     const updated = await updateRows<any>(
       "portal_calendar_events",
       { id: eq(eventId), client_id: eq(clientId) },
       {
-        scout_meeting_status: shouldFinalize ? "complete" : "live_notes",
+        scout_meeting_status: shouldFinalize ? (injection?.warnings?.length ? "partial_success" : "complete") : "live_notes",
         scout_live_transcript: nextTranscript,
         scout_meeting_notes: artifacts.notes,
         scout_key_takeaways: artifacts.takeaways,
@@ -872,6 +945,11 @@ export const POST: APIRoute = async ({ request }) => {
         scout_latest_response_at: latestResponseAt,
         scout_stop_requested_at: stopRequestedAt,
         scout_last_summary_at: new Date().toISOString(),
+        ...(shouldFinalize && !injection?.warnings?.length ? {
+          scout_extraction_hash: currentExtractionHash,
+          scout_extraction_run_id: extractionRunId,
+          scout_extracted_at: new Date().toISOString(),
+        } : {}),
       }
     );
 
@@ -883,6 +961,12 @@ export const POST: APIRoute = async ({ request }) => {
       warnings: injection?.warnings || [],
     });
   } catch (error) {
+    await logErrorEvent(request, {
+      area: "meeting_scout",
+      route: "/api/portal/meeting-scout",
+      message: "Scout meeting processing failed.",
+      error,
+    });
     return jsonResponse({ error: error instanceof Error ? error.message : "Could not update Scout meeting notes." }, 500);
   }
 };
@@ -920,6 +1004,12 @@ export const GET: APIRoute = async ({ request, url }) => {
       },
     });
   } catch (error) {
+    await logErrorEvent(request, {
+      area: "meeting_scout",
+      route: "/api/portal/meeting-scout",
+      message: "Scout meeting notes fetch failed.",
+      error,
+    });
     return jsonResponse({ error: error instanceof Error ? error.message : "Could not fetch Scout meeting notes." }, 500);
   }
 };

@@ -1,6 +1,7 @@
 import OpenAI from "openai";
 import { createToken, hashToken } from "./auth";
 import { getEnv } from "./env";
+import { applyAiReviewGate } from "./reviewGates";
 import { buildPortalUrl, secretLinkPayload, sendPortalLinkEmail, shouldReturnSecretLinks } from "./secret-links";
 import { insertRow, selectOne, selectRows, updateRows, eq } from "./supabase";
 
@@ -595,12 +596,13 @@ async function insertMany(table: string, clientId: string, rows: Array<Record<st
   const inserted = [];
   for (const row of rows.filter(Boolean)) {
     const commercialDefaults = COMMERCIAL_TABLES.has(table) && !("visibility" in row) ? { visibility: "internal" } : {};
+    const payload = applyAiReviewGate(table, {
+      client_id: clientId,
+      ...commercialDefaults,
+      ...projectIdPayload(row, projectId),
+    }, "lead_provisioning");
     inserted.push(
-      await insertRow<any>(table, {
-        client_id: clientId,
-        ...commercialDefaults,
-        ...projectIdPayload(row, projectId),
-      })
+      await insertRow<any>(table, payload)
     );
   }
   return inserted;
@@ -814,31 +816,37 @@ export async function provisionPortalFromLead(lead: LeadPayload) {
   await tryPortalWrite("setup tour", warnings, async () => {
     for (const [index, step] of (plan.tourSteps || fallbackPlan(lead).tourSteps || []).entries()) {
       await insertRow("portal_tour_steps", {
-        client_id: client.id,
-        title: step.title,
-        body: step.body,
-        portal_section: step.portalSection || "dashboard",
-        sort_order: index + 1,
-        visibility: "shared",
+        ...applyAiReviewGate("portal_tour_steps", {
+          client_id: client.id,
+          title: step.title,
+          body: step.body,
+          portal_section: step.portalSection || "dashboard",
+          sort_order: index + 1,
+          visibility: "shared",
+        }, "lead_provisioning"),
       });
     }
   });
 
   await tryPortalWrite("timeline event", warnings, () =>
     insertRow("portal_timeline_events", {
-      client_id: client.id,
-      project_id: projectId || null,
-      event_type: "workspace_provisioned",
-      title: "Scout created this pre-meeting workspace",
-      description: "The workspace was populated from the initial Scout inquiry before the first meeting.",
+      ...applyAiReviewGate("portal_timeline_events", {
+        client_id: client.id,
+        project_id: projectId || null,
+        event_type: "workspace_provisioned",
+        title: "Scout created this pre-meeting workspace",
+        description: "The workspace was populated from the initial Scout inquiry before the first meeting.",
+      }, "lead_provisioning"),
     })
   );
 
   await tryPortalWrite("notification", warnings, () =>
     insertRow("portal_notifications", {
-      client_id: client.id,
-      title: "Your setup tour is ready",
-      body: "Review the setup tour on your dashboard to see where Scout stored the project information from your conversation.",
+      ...applyAiReviewGate("portal_notifications", {
+        client_id: client.id,
+        title: "Your setup tour is ready",
+        body: "Review the setup tour on your dashboard to see where Scout stored the project information from your conversation.",
+      }, "lead_provisioning"),
     })
   );
 

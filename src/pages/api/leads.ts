@@ -1,6 +1,7 @@
 import type { APIRoute } from "astro";
 import { provisionPortalFromLead } from "../../lib/portal/provisioning";
 import { verifyLeadCaptcha } from "../../lib/portal/captcha";
+import { logErrorEvent, logStructuredEvent } from "../../lib/portal/logging";
 import { enforceRateLimit, RATE_LIMITS } from "../../lib/portal/rate-limit";
 import { recordWebsiteAnalyticsEvent } from "../../lib/portal/websiteAnalytics";
 
@@ -331,7 +332,13 @@ export const POST: APIRoute = async ({ request }) => {
       lead = await insertLead(leadPayload);
     } catch (error) {
       leadStorageError = error instanceof Error ? error.message : "Lead database insert failed.";
-      console.error("Lead storage failed:", error);
+      await logErrorEvent(request, {
+        area: "lead_capture",
+        route: "/api/leads",
+        message: "Lead storage failed.",
+        error,
+        metadata: { email, source: leadPayload.source, pagePath: leadPayload.page_path },
+      });
     }
 
     if (lead) {
@@ -342,7 +349,14 @@ export const POST: APIRoute = async ({ request }) => {
         } as any);
       } catch (error) {
         portalProvisionError = error instanceof Error ? error.message : "Portal provisioning failed.";
-        console.error("Portal provisioning failed:", error);
+        await logStructuredEvent(request, {
+          level: "warn",
+          area: "lead_provisioning",
+          route: "/api/leads",
+          message: "Portal provisioning failed after lead capture.",
+          error,
+          metadata: { leadId: lead.id, email, source: leadPayload.source },
+        });
       }
     } else {
       portalProvisionError = "Portal provisioning skipped because the lead was not saved to the database.";
@@ -382,7 +396,12 @@ export const POST: APIRoute = async ({ request }) => {
       headers: { "Content-Type": "application/json" },
     });
   } catch (err) {
-    console.error(err);
+    await logErrorEvent(request, {
+      area: "lead_capture",
+      route: "/api/leads",
+      message: "Lead submission failed.",
+      error: err,
+    });
     return new Response(
       JSON.stringify({
         error: PUBLIC_LEAD_ERROR,

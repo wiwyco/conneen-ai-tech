@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-07-28T05:05:24.043Z",
+  "generatedAt": "2026-07-28T05:31:31.806Z",
   "note": "Frozen Supabase schema/migration manifest. Run npm run check:supabase-freeze before deployment.",
   "migrations": [
     {
@@ -39,12 +39,36 @@
       "name": "website_analytics",
       "source": "supabase/website_analytics.sql",
       "frozen": "supabase/migrations/20260727000000_website_analytics.sql",
-      "sourceSha256": "2d57c219368327f9d7820d77731a1fb805488950fb0015ecac71b6f952608f25",
-      "frozenSha256": "f3fc050c2ff3e546b7b46275c0378e86a04a690aedb8c13723a11ee5c7be4c29"
+      "sourceSha256": "aa9270b11f35d25fb2af6d516e2182a0b6ee5dc8e04bcf4e184b7671b079f346",
+      "frozenSha256": "a9e56adf11ec97cbccffad739411431fe4358eccc3eb1a61b5b89dac250c6bc0"
+    },
+    {
+      "version": "20260727000100",
+      "name": "ai_review_gates",
+      "source": "supabase/ai_review_gates.sql",
+      "frozen": "supabase/migrations/20260727000100_ai_review_gates.sql",
+      "sourceSha256": "bf7931aea334c393582356c7adc22bfc5038f26c1fd9d99336a16c444cc9aa47",
+      "frozenSha256": "9fbd934fe47f4e0390b471c6506613dd2fd1a089cd4e8e62e643dec93c936731"
+    },
+    {
+      "version": "20260727000200",
+      "name": "meeting_transcript_idempotency",
+      "source": "supabase/meeting_transcript_idempotency.sql",
+      "frozen": "supabase/migrations/20260727000200_meeting_transcript_idempotency.sql",
+      "sourceSha256": "df9ee420bad8fb3d57a52c54d470560a26a5980ad44885b8c4a01fbeb53d0eb7",
+      "frozenSha256": "774805f629357076b154e34eb532d6fd9888c36f7e01902e8a1e359c7c353238"
+    },
+    {
+      "version": "20260727000300",
+      "name": "app_error_events",
+      "source": "supabase/app_error_events.sql",
+      "frozen": "supabase/migrations/20260727000300_app_error_events.sql",
+      "sourceSha256": "5a335ce504bfae06f522b3efa3a3f3d5ad3eefb342de7182eb491d4364d68aae",
+      "frozenSha256": "01533e9e430d24529e9e820b1e7a2a9f44fd47126d5d23c2e2e6d62b74128512"
     }
   ],
   "combined": {
     "file": "supabase/schema_freeze.sql",
-    "sha256": "95264fb5bd75cdf48d7316d9ff7aa4525510f8284ce57a19195222dd44c0c42f"
+    "sha256": "e5eefd8a6a3c183d43e0d4d0a97ef6a231f0cd55eed2ccc64f267739fb9ccf76"
   }
 }

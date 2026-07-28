@@ -4,5 +4,6 @@ dist
 .env
 .env.local
 .vercel
+.test-build
 .DS_Store
 scout-evals/

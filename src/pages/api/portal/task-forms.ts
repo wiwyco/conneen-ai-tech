@@ -2,6 +2,7 @@ import type { APIRoute } from "astro";
 import { logAudit, logTimeline } from "../../../lib/portal/activity";
 import { canAccessClient, requirePortalAuth } from "../../../lib/portal/auth";
 import { cleanText, jsonResponse, readJson } from "../../../lib/portal/http";
+import { logErrorEvent } from "../../../lib/portal/logging";
 import { canPortalAction } from "../../../lib/portal/permissions";
 import { eq, insertRow, selectOne, updateRows } from "../../../lib/portal/supabase";
 
@@ -112,6 +113,12 @@ export const POST: APIRoute = async ({ request }) => {
 
     return jsonResponse({ task: updatedTask, memory });
   } catch (error) {
+    await logErrorEvent(request, {
+      area: "task_forms",
+      route: "/api/portal/task-forms",
+      message: "Task form submission failed.",
+      error,
+    });
     return jsonResponse({ error: error instanceof Error ? error.message : "Could not submit form." }, 500);
   }
 };

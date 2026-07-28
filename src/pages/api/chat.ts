@@ -1,6 +1,7 @@
 import type { APIRoute } from "astro";
 import OpenAI from "openai";
 import { COMPANY_KNOWLEDGE } from "../../data/companyKnowledge";
+import { logErrorEvent } from "../../lib/portal/logging";
 import { enforceRateLimit, RATE_LIMITS } from "../../lib/portal/rate-limit";
 
 export const prerender = false;
@@ -155,7 +156,12 @@ Rules:
       headers: { "Content-Type": "application/json" },
     });
   } catch (err) {
-    console.error(err);
+    await logErrorEvent(request, {
+      area: "public_chat",
+      route: "/api/chat",
+      message: "Public Scout chat failed.",
+      error: err,
+    });
     return new Response(JSON.stringify({ error: getSafeErrorMessage(err) }), {
       status: 500,
       headers: { "Content-Type": "application/json" },

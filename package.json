@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "astro dev",
+    "prebuild": "npm run check:supabase-freeze && npm run test:portal-integrations",
     "build": "astro build",
     "preview": "astro preview",
     "astro": "astro",
@@ -17,6 +18,7 @@
     "validate:prod-env": "node scripts/validate-production-env.mjs",
     "freeze:supabase": "node scripts/freeze-supabase-schema.mjs",
     "check:supabase-freeze": "node scripts/freeze-supabase-schema.mjs --check",
+    "test:portal-integrations": "node --test scripts/test-portal-integrations.mjs",
     "scout:rtms": "node scripts/scout-rtms-listener.mjs"
   },
   "dependencies": {

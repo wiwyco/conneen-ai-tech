@@ -2,7 +2,7 @@ import crypto from "node:crypto";
 import { cleanText } from "./http";
 import { insertRow, selectRows } from "./supabase";
 
-export type WebsiteAnalyticsEventType = "page_view" | "chat_message" | "lead_submission";
+export type WebsiteAnalyticsEventType = "page_view" | "chat_message" | "lead_submission" | "client_error";
 
 type TrackEventInput = {
   eventType: WebsiteAnalyticsEventType;
@@ -86,7 +86,7 @@ function dayKey(value: string) {
 export async function getWebsiteUsageAnalytics(days = 30) {
   const safeDays = Math.min(365, Math.max(1, Math.round(days)));
   const since = new Date(Date.now() - safeDays * 24 * 60 * 60 * 1000).toISOString();
-  const [events, leads] = await Promise.all([
+  const [events, leads, errors] = await Promise.all([
     selectRows<any>("website_analytics_events", {
       select: "*",
       created_at: `gte.${since}`,
@@ -95,6 +95,12 @@ export async function getWebsiteUsageAnalytics(days = 30) {
     }).catch(() => []),
     selectRows<any>("diagnostic_leads", {
       select: "id,source,page_path,workflow_type,created_at",
+      created_at: `gte.${since}`,
+      order: "created_at.desc",
+      limit: 1000,
+    }).catch(() => []),
+    selectRows<any>("app_error_events", {
+      select: "id,level,area,route,message,error_name,error_message,client_id,user_role,country,region,city,metadata,created_at",
       created_at: `gte.${since}`,
       order: "created_at.desc",
       limit: 1000,
@@ -137,6 +143,9 @@ export async function getWebsiteUsageAnalytics(days = 30) {
       leads: leadRows.length,
       chatbotLeads: chatbotLeads.length,
       websiteLeads: websiteLeads.length,
+      errors: errors.length,
+      serverErrors: errors.filter((event) => event.level === "error").length,
+      warnings: errors.filter((event) => event.level === "warn").length,
     },
     daily: [...daysByKey.values()],
     topPages: groupCounts(pageViews, "page_path").slice(0, 10),
@@ -144,7 +153,9 @@ export async function getWebsiteUsageAnalytics(days = 30) {
     regions: groupCounts(pageViews, "region").slice(0, 10),
     cities: groupCounts(pageViews, "city").slice(0, 10),
     leadSources: groupCounts(leadRows, "source", "workflow_diagnostic"),
+    errorAreas: groupCounts(errors, "area").slice(0, 10),
     recentEvents: events.slice(0, 30),
     recentLeads: leadRows.slice(0, 20),
+    recentErrors: errors.slice(0, 20),
   };
 }

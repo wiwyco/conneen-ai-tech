@@ -1,6 +1,6 @@
 -- Conneen AI Supabase schema freeze.
 -- Re-run this whole file in the Supabase SQL editor to apply the current ordered schema/migrations.
--- Generated at: 2026-07-28T05:05:24.043Z
+-- Generated at: 2026-07-28T05:31:31.806Z
 
 -- =========================================================================
 -- 20260517000000_diagnostic_leads.sql
@@ -1242,7 +1242,7 @@ end $$;
 
 create table if not exists website_analytics_events (
   id uuid primary key default gen_random_uuid(),
-  event_type text not null check (event_type in ('page_view', 'chat_message', 'lead_submission')),
+  event_type text not null check (event_type in ('page_view', 'chat_message', 'lead_submission', 'client_error')),
   source text,
   page_path text,
   referrer text,
@@ -1274,6 +1274,159 @@ alter table website_analytics_events enable row level security;
 drop policy if exists "website analytics service role all" on website_analytics_events;
 create policy "website analytics service role all"
   on website_analytics_events
+  for all
+  using (auth.role() = 'service_role')
+  with check (auth.role() = 'service_role');
+
+
+-- =========================================================================
+-- 20260727000100_ai_review_gates.sql
+-- =========================================================================
+-- AI review gates for generated commercial and client-visible portal records.
+-- Existing records remain approved by default; AI-created records are inserted as pending/internal by app code.
+
+do $$
+declare
+  table_name text;
+  review_tables text[] := array[
+    'portal_documents',
+    'portal_business_knowledge',
+    'portal_workflows',
+    'portal_projects',
+    'portal_tasks',
+    'portal_decisions',
+    'portal_meetings',
+    'portal_timeline_events',
+    'portal_requirements',
+    'portal_estimates',
+    'portal_payments',
+    'portal_invoices',
+    'portal_contracts',
+    'portal_support_tickets',
+    'portal_training_materials',
+    'portal_handover_items',
+    'portal_faqs',
+    'portal_open_questions',
+    'portal_notifications',
+    'portal_tour_steps',
+    'portal_calendar_events',
+    'portal_data_requests',
+    'portal_system_access',
+    'portal_business_goals',
+    'portal_success_metrics',
+    'portal_risks',
+    'portal_milestones',
+    'portal_change_requests'
+  ];
+begin
+  foreach table_name in array review_tables loop
+    execute format('alter table if exists %I add column if not exists review_status text default ''approved''', table_name);
+    execute format('alter table if exists %I add column if not exists review_required boolean not null default false', table_name);
+    execute format('alter table if exists %I add column if not exists review_reason text', table_name);
+    execute format('alter table if exists %I add column if not exists reviewed_by uuid references portal_users(id) on delete set null', table_name);
+    execute format('alter table if exists %I add column if not exists reviewed_at timestamptz', table_name);
+    execute format('alter table if exists %I add column if not exists generated_by text', table_name);
+  end loop;
+end $$;
+
+create index if not exists portal_projects_review_idx on portal_projects (client_id, review_required, review_status);
+create index if not exists portal_decisions_review_idx on portal_decisions (client_id, review_required, review_status);
+create index if not exists portal_estimates_review_idx on portal_estimates (client_id, review_required, review_status);
+create index if not exists portal_invoices_review_idx on portal_invoices (client_id, review_required, review_status);
+create index if not exists portal_contracts_review_idx on portal_contracts (client_id, review_required, review_status);
+
+
+-- =========================================================================
+-- 20260727000200_meeting_transcript_idempotency.sql
+-- =========================================================================
+-- Idempotency/source tracking for Scout meeting transcript extraction.
+-- Each generated row can be traced to the meeting event, transcript hash, run id, and per-table item key.
+
+alter table portal_calendar_events
+  add column if not exists scout_extraction_hash text,
+  add column if not exists scout_extraction_run_id uuid,
+  add column if not exists scout_extracted_at timestamptz;
+
+create index if not exists portal_calendar_events_scout_extraction_hash_idx
+  on portal_calendar_events (id, scout_extraction_hash);
+
+do $$
+declare
+  table_name text;
+  source_tables text[] := array[
+    'portal_meetings',
+    'portal_requirements',
+    'portal_tasks',
+    'portal_handover_items',
+    'portal_decisions',
+    'portal_open_questions',
+    'portal_milestones',
+    'portal_estimates',
+    'portal_risks',
+    'portal_success_metrics',
+    'portal_data_requests',
+    'portal_system_access',
+    'portal_training_materials',
+    'portal_change_requests',
+    'portal_business_goals',
+    'portal_timeline_events'
+  ];
+begin
+  foreach table_name in array source_tables loop
+    execute format('alter table if exists %I add column if not exists source_table text', table_name);
+    execute format('alter table if exists %I add column if not exists source_record_id uuid', table_name);
+    execute format('alter table if exists %I add column if not exists source_hash text', table_name);
+    execute format('alter table if exists %I add column if not exists source_run_id uuid', table_name);
+    execute format('alter table if exists %I add column if not exists source_item_key text', table_name);
+    execute format(
+      'create unique index if not exists %I on %I (source_record_id, source_hash, source_item_key, generated_by) where source_record_id is not null and source_hash is not null and source_item_key is not null and generated_by = ''meeting_scout''',
+      table_name || '_meeting_source_once_idx',
+      table_name
+    );
+  end loop;
+end $$;
+
+
+-- =========================================================================
+-- 20260727000300_app_error_events.sql
+-- =========================================================================
+-- Structured application logging and error tracking for admin dashboards.
+
+create table if not exists app_error_events (
+  id uuid primary key default gen_random_uuid(),
+  level text not null default 'error' check (level in ('info', 'warn', 'error')),
+  area text not null,
+  route text,
+  message text not null,
+  error_name text,
+  error_message text,
+  error_stack text,
+  client_id uuid references portal_clients(id) on delete set null,
+  user_id uuid references portal_users(id) on delete set null,
+  user_role text,
+  country text,
+  region text,
+  city text,
+  ip_hash text,
+  user_agent text,
+  metadata jsonb not null default '{}'::jsonb,
+  created_at timestamptz not null default now()
+);
+
+create index if not exists app_error_events_created_idx
+  on app_error_events(created_at desc);
+
+create index if not exists app_error_events_level_created_idx
+  on app_error_events(level, created_at desc);
+
+create index if not exists app_error_events_area_created_idx
+  on app_error_events(area, created_at desc);
+
+alter table app_error_events enable row level security;
+
+drop policy if exists "app error events service role all" on app_error_events;
+create policy "app error events service role all"
+  on app_error_events
   for all
   using (auth.role() = 'service_role')
   with check (auth.role() = 'service_role');

@@ -4,6 +4,8 @@ import { logAudit, logTimeline } from "../../../../lib/portal/activity";
 import { cleanText, jsonResponse, readJson } from "../../../../lib/portal/http";
 import { canPortalAction, filterReadableRecords, loadPortalAccessContext } from "../../../../lib/portal/permissions";
 import { sanitizeRecordPayload, validateSectionAccess } from "../../../../lib/portal/records";
+import { applyManualReviewMetadata } from "../../../../lib/portal/reviewGates";
+import { logErrorEvent } from "../../../../lib/portal/logging";
 import { eq, insertRow, order, selectOne, selectRows, updateRows } from "../../../../lib/portal/supabase";
 
 export const prerender = false;
@@ -35,6 +37,12 @@ export const GET: APIRoute = async ({ request, params, url }) => {
       : rows;
     return jsonResponse({ section: config.section, label: config.label, rows: visibleRows });
   } catch (error) {
+    await logErrorEvent(request, {
+      area: "portal_records",
+      route: `/api/portal/records/${params.section || ""}`,
+      message: "Portal record load failed.",
+      error,
+    });
     return jsonResponse({ error: error instanceof Error ? error.message : "Could not load records." }, 500);
   }
 };
@@ -50,6 +58,7 @@ export const POST: APIRoute = async ({ request, params }) => {
     if (!await canPortalAction(auth, { section: config.section, action: "create", clientId, projectId: cleanText(payload.project_id, 80), visibility: cleanText(payload.visibility, 20) })) {
       return jsonResponse({ error: "Forbidden." }, 403);
     }
+    applyManualReviewMetadata(auth, payload);
     const row = await insertRow<any>(config.table, {
       ...payload,
     });
@@ -67,6 +76,12 @@ export const POST: APIRoute = async ({ request, params }) => {
 
     return jsonResponse({ row });
   } catch (error) {
+    await logErrorEvent(request, {
+      area: "portal_records",
+      route: `/api/portal/records/${params.section || ""}`,
+      message: "Portal record create failed.",
+      error,
+    });
     return jsonResponse({ error: error instanceof Error ? error.message : "Could not create record." }, 500);
   }
 };
@@ -101,12 +116,19 @@ export const PATCH: APIRoute = async ({ request, params }) => {
       if (!await canPortalAction(auth, { section: config.section, action: "update", clientId, projectId: existing.project_id || cleanText(payload.project_id, 80), recordId: id, record: existing })) {
         return jsonResponse({ error: "Forbidden." }, 403);
       }
+      applyManualReviewMetadata(auth, payload, existing);
     }
     const query = config.clientScoped ? { id: eq(id), client_id: eq(clientId) } : { id: eq(id) };
     const [row] = await updateRows<any>(config.table, query, { ...payload, updated_at: new Date().toISOString() });
     await logAudit(auth, "update", config.table, id, clientId);
     return jsonResponse({ row });
   } catch (error) {
+    await logErrorEvent(request, {
+      area: "portal_records",
+      route: `/api/portal/records/${params.section || ""}`,
+      message: "Portal record update failed.",
+      error,
+    });
     return jsonResponse({ error: error instanceof Error ? error.message : "Could not update record." }, 500);
   }
 };

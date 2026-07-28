@@ -4,7 +4,7 @@
 
 create table if not exists website_analytics_events (
   id uuid primary key default gen_random_uuid(),
-  event_type text not null check (event_type in ('page_view', 'chat_message', 'lead_submission')),
+  event_type text not null check (event_type in ('page_view', 'chat_message', 'lead_submission', 'client_error')),
   source text,
   page_path text,
   referrer text,

@@ -2,6 +2,7 @@ import type { APIRoute } from "astro";
 import { logAudit, logTimeline } from "../../../lib/portal/activity";
 import { canAccessClient, requirePortalAuth } from "../../../lib/portal/auth";
 import { cleanText, jsonResponse } from "../../../lib/portal/http";
+import { logErrorEvent } from "../../../lib/portal/logging";
 import { canPortalAction } from "../../../lib/portal/permissions";
 import { eq, insertRow, selectOne, updateRows } from "../../../lib/portal/supabase";
 import { uploadStorageObject } from "../../../lib/portal/storage";
@@ -122,6 +123,12 @@ export const POST: APIRoute = async ({ request }) => {
 
     return jsonResponse({ document, task: updatedTask });
   } catch (error) {
+    await logErrorEvent(request, {
+      area: "task_uploads",
+      route: "/api/portal/task-uploads",
+      message: "Task document upload failed.",
+      error,
+    });
     return jsonResponse({ error: error instanceof Error ? error.message : "Upload failed." }, 500);
   }
 };

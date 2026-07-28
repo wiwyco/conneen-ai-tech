@@ -151,10 +151,10 @@ const sectionConfig = {
   documents: { label: "Documents", title: "title", fields: [["title", "Title"], ["category", "Category"], ["description", "Description", "textarea"], ["tags", "Tags, comma separated"], ["visibility", "Visibility", "visibility"]] },
   projects: { label: "Projects", title: "name", fields: [["name", "Name"], ["agile_stage", "Agile stage"], ["status", "Status"], ["scope", "Scope", "textarea"], ["goals", "Goals", "textarea"], ["deliverables", "Deliverables", "textarea"], ["target_date", "Target date", "date"], ["visibility", "Visibility", "visibility"]] },
   milestones: { label: "Milestones", title: "name", fields: [["name", "Name"], ["stage", "Stage"], ["status", "Status"], ["due_date", "Due date", "date"], ["notes", "Notes", "textarea"]] },
-  estimates: { label: "Quote / Estimate History", title: "title", fields: [["title", "Title"], ["estimate_type", "Type"], ["hour_range_low", "Low hours", "number"], ["hour_range_high", "High hours", "number"], ["assumptions", "Assumptions", "textarea"], ["approval_status", "Approval status"], ["visibility", "Visibility", "visibility"]] },
+  estimates: { label: "Quote / Estimate History", title: "title", fields: [["title", "Title"], ["estimate_type", "Type"], ["hour_range_low", "Low hours", "number"], ["hour_range_high", "High hours", "number"], ["assumptions", "Assumptions", "textarea"], ["approval_status", "Approval status"], ["review_status", "AI review", "review_status"], ["review_reason", "Review note", "textarea"], ["visibility", "Visibility", "visibility"]] },
   payments: { label: "Milestone Payments", title: "title", fields: [["title", "Title"], ["amount", "Amount", "number"], ["status", "Status"], ["due_date", "Due date", "date"], ["notes", "Notes", "textarea"], ["visibility", "Visibility", "visibility"]] },
-  invoices: { label: "Invoices", title: "invoice_number", fields: [["invoice_number", "Invoice number"], ["amount", "Amount", "number"], ["status", "Status"], ["issued_at", "Issued", "date"], ["due_date", "Due", "date"], ["notes", "Notes", "textarea"], ["visibility", "Visibility", "visibility"]] },
-  contracts: { label: "Contracts / SOWs", title: "title", fields: [["title", "Title"], ["contract_type", "Type"], ["status", "Status"], ["signed_at", "Signed date", "date"], ["notes", "Notes", "textarea"], ["visibility", "Visibility", "visibility"]] },
+  invoices: { label: "Invoices", title: "invoice_number", fields: [["invoice_number", "Invoice number"], ["amount", "Amount", "number"], ["status", "Status"], ["issued_at", "Issued", "date"], ["due_date", "Due", "date"], ["notes", "Notes", "textarea"], ["review_status", "AI review", "review_status"], ["review_reason", "Review note", "textarea"], ["visibility", "Visibility", "visibility"]] },
+  contracts: { label: "Contracts / SOWs", title: "title", fields: [["title", "Title"], ["contract_type", "Type"], ["status", "Status"], ["signed_at", "Signed date", "date"], ["notes", "Notes", "textarea"], ["review_status", "AI review", "review_status"], ["review_reason", "Review note", "textarea"], ["visibility", "Visibility", "visibility"]] },
   business_knowledge: { label: "Business Knowledge", title: "title", fields: [["title", "Title"], ["category", "Category"], ["content", "Content", "textarea"], ["tags", "Tags, comma separated"], ["visibility", "Visibility", "visibility"]] },
   workflows: { label: "Workflow Inventory", title: "name", fields: [["name", "Name"], ["agile_epic", "Agile epic"], ["current_process", "Current process", "textarea"], ["pain_points", "Pain points", "textarea"], ["tools", "Tools"], ["inputs", "Inputs"], ["outputs", "Outputs"], ["people_involved", "People"], ["frequency", "Frequency"], ["cost_of_pain", "Cost of pain"], ["automation_opportunity", "Automation opportunity", "textarea"], ["priority", "Priority"], ["status", "Status"], ["visibility", "Visibility", "visibility"]] },
   pain_points: { label: "Pain Points", title: "title", fields: [["title", "Title"], ["description", "Description", "textarea"], ["severity", "Severity"], ["business_impact", "Business impact", "textarea"], ["status", "Status"]] },
@@ -164,7 +164,7 @@ const sectionConfig = {
   faqs: { label: "Client FAQ", title: "question", fields: [["question", "Question", "textarea"], ["answer", "Answer", "textarea"], ["tags", "Tags, comma separated"], ["visibility", "Visibility", "visibility"]] },
   ai_memories: { label: "Client AI Memory", title: "title", fields: [["title", "Title"], ["memory_type", "Type"], ["content", "Content", "textarea"], ["confidence", "Confidence"], ["visibility", "Visibility", "visibility"]] },
   tasks: { label: "Task Board", title: "title", fields: [["title", "Title"], ["task_type", "Type"], ["description", "Description", "textarea"], ["status", "Status"], ["priority", "Priority"], ["expected_hours", "Expected hours", "number"], ["success_metrics", "Success metrics", "textarea"], ["risks", "Risks", "textarea"], ["due_date", "Due date", "date"], ["visibility", "Visibility", "visibility"]] },
-  decisions: { label: "Decision Log", title: "title", fields: [["title", "Title"], ["decision", "Decision", "textarea"], ["rationale", "Rationale", "textarea"], ["decided_by", "Decided by"], ["decided_at", "Date", "date"], ["visibility", "Visibility", "visibility"]] },
+  decisions: { label: "Decision Log", title: "title", fields: [["title", "Title"], ["decision", "Decision", "textarea"], ["rationale", "Rationale", "textarea"], ["decided_by", "Decided by"], ["decided_at", "Date", "date"], ["review_status", "AI review", "review_status"], ["review_reason", "Review note", "textarea"], ["visibility", "Visibility", "visibility"]] },
   meetings: { label: "Meeting Notes", title: "title", fields: [["title", "Title"], ["meeting_at", "Meeting date/time"], ["attendees", "Attendees"], ["notes", "Notes", "textarea"], ["visibility", "Visibility", "visibility"]] },
   meeting_action_items: { label: "Meeting Action Items", title: "action", fields: [["action", "Action", "textarea"], ["owner", "Owner"], ["due_date", "Due date", "date"], ["status", "Status"]] },
   checklist_items: { label: "Onboarding / Checklists", title: "title", fields: [["title", "Title"], ["checklist_type", "Type"], ["description", "Description", "textarea"], ["status", "Status"], ["due_date", "Due date", "date"]] },
@@ -390,9 +390,27 @@ async function api(path, options = {}) {
   if (!response.ok) {
     const error = new Error(data.error || `${path} failed (${response.status})`);
     error.status = response.status;
+    trackClientError("portal_api", error, { path, status: response.status });
     throw error;
   }
   return data;
+}
+
+function trackClientError(area, error, metadata = {}) {
+  fetch("/api/analytics/track", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      eventType: "client_error",
+      source: "client_portal",
+      pagePath: window.location.pathname,
+      metadata: {
+        area,
+        message: String(error?.message || error || "Client error").slice(0, 500),
+        ...metadata,
+      },
+    }),
+  }).catch(() => {});
 }
 
 function showView(name) {
@@ -723,14 +741,20 @@ function emptyState(title, body, action = "") {
 }
 
 function sourcePill(row = {}) {
-  const text = [row.source_type, row.title, row.name, row.summary, row.description]
+  const text = [row.source_type, row.generated_by, row.title, row.name, row.summary, row.description]
     .filter(Boolean)
     .join(" ")
     .toLowerCase();
-  if (row.diagnostic_lead_id || text.includes("scout")) {
+  if (row.diagnostic_lead_id || row.generated_by || text.includes("scout")) {
     return `<span class="source-pill scout-source">Scout-created</span>`;
   }
   return "";
+}
+
+function reviewBadge(row = {}) {
+  if (!row.review_required && !["pending_review", "rejected"].includes(String(row.review_status || "").toLowerCase())) return "";
+  const label = row.review_status === "rejected" ? "Review rejected" : "Needs AI review";
+  return `<span class="source-pill review-source">${escapeHtml(label)}</span>`;
 }
 
 function statusBadge(value, fallback = "Status") {
@@ -992,6 +1016,9 @@ function fieldControl([name, label, type]) {
   if (type === "visibility") {
     return `<label>${label}<select name="${name}"><option value="shared">Client visible</option><option value="internal">Internal only</option></select></label>`;
   }
+  if (type === "review_status") {
+    return `<label>${label}<select name="${name}"><option value="">No change</option><option value="pending_review">Pending review</option><option value="approved">Approved</option><option value="rejected">Rejected</option></select></label>`;
+  }
   return `<label>${label}<input name="${name}" type="${type || "text"}" /></label>`;
 }
 
@@ -1042,6 +1069,7 @@ async function loadRecords(section) {
       <article class="record-row">
         <strong>${titleForRow(config, row)}</strong>
         <span>${row.status || row.category || row.priority || row.review_status || ""}</span>
+        ${reviewBadge(row)}
         <p>${summarizeText(row.description || row.content || row.notes || row.decision || row.scope || row.body || row.summary)}</p>
       </article>
     `).join("")
@@ -1269,7 +1297,7 @@ function renderKnowledgeLibrary() {
         const config = sectionConfig[section];
         return `
           <button class="knowledge-row knowledge-item" type="button" data-knowledge-key="${knowledgeRecordKey(section, row)}">
-            <span><strong>${escapeHtml(knowledgeTitle(section, row))}</strong>${sourcePill(row)}</span>
+            <span><strong>${escapeHtml(knowledgeTitle(section, row))}</strong>${sourcePill(row)}${reviewBadge(row)}</span>
             <span>${escapeHtml(config?.label || section)}</span>
             <span>${escapeHtml(formatDate(row.created_at))}</span>
           </button>
@@ -1442,7 +1470,7 @@ function renderProjectList(section) {
         <div>
           <strong>${projectItemTitle(section, row)}</strong>
           <span>${projectItemMeta(section, row)}</span>
-          ${sourcePill(row)}
+          ${sourcePill(row)}${reviewBadge(row)}
         </div>
         <p>${summarizeText(projectItemBody(section, row), 260)}</p>
       </button>
@@ -1522,7 +1550,7 @@ function renderProjectWorkspace() {
           <p class="eyebrow">${escapeHtml(project.agile_stage || "Project")}</p>
           <h2>${escapeHtml(project.name)}</h2>
           <p>${escapeHtml(summarizeText(project.scope || project.goals || "No scope has been added yet.", 360))}</p>
-          ${sourcePill(project)}
+          ${sourcePill(project)}${reviewBadge(project)}
         </div>
         <div class="project-kpis">
           ${metric("Milestones", projectRows("milestones").length)}
@@ -2784,6 +2812,7 @@ function renderWebsiteAnalytics() {
     metric("Leads", counts.leads || 0),
     metric("Chatbot leads", counts.chatbotLeads || 0),
     metric("Website leads", counts.websiteLeads || 0),
+    metric("Errors", counts.errors || 0),
   ].join("");
   qs("[data-website-lead-sources]").innerHTML = compactList(data.leadSources, { empty: "No leads in this window." });
   qs("[data-website-top-pages]").innerHTML = compactList(data.topPages, { empty: "No page views recorded yet." });
@@ -2794,7 +2823,19 @@ function renderWebsiteAnalytics() {
   ];
   qs("[data-website-geography]").innerHTML = compactList(geography, { empty: "No coarse location data available yet." });
   qs("[data-website-daily]").innerHTML = renderDailyActivity(data.daily || []);
+  qs("[data-website-errors]").innerHTML = compactList((data.recentErrors || []).map((item) => ({
+    label: `${item.area || "app"}: ${item.message || item.error_message || "Error"}`,
+    count: item.created_at ? formatDateTime(item.created_at) : "",
+  })), { empty: "No errors in this window." });
 }
+
+window.addEventListener("error", (event) => {
+  trackClientError("window_error", event.error || event.message, { sourceFile: event.filename, line: event.lineno });
+});
+
+window.addEventListener("unhandledrejection", (event) => {
+  trackClientError("unhandled_rejection", event.reason || "Unhandled promise rejection");
+});
 
 async function loadWebsiteAnalytics() {
   if (!state.isAdmin) return;
