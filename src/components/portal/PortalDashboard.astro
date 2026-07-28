@@ -17,6 +17,7 @@
         <button data-nav="work">Work</button>
         <button data-nav="support">Support</button>
         <button data-nav="ai">Scout AI</button>
+        <button data-nav="dashboards" data-admin-only hidden>Dashboards</button>
         <button data-nav="admin" data-admin-only hidden>Admin</button>
       </nav>
       <button class="secondary" data-logout>Log out</button>
@@ -268,6 +269,45 @@
             <pre class="ai-output" data-ai-output></pre>
           </section>
         </div>
+      </section>
+
+      <section class="portal-view" data-section="dashboards" data-admin-only hidden>
+        <section class="portal-panel usage-dashboard-panel">
+          <div class="panel-heading dashboard-heading">
+            <div>
+              <h2>Website Usage</h2>
+              <p>Public site traffic, Scout use, lead sources, and coarse visitor geography.</p>
+            </div>
+            <label>
+              Window
+              <select data-website-analytics-days>
+                <option value="7">Last 7 days</option>
+                <option value="30" selected>Last 30 days</option>
+                <option value="90">Last 90 days</option>
+                <option value="365">Last 365 days</option>
+              </select>
+            </label>
+          </div>
+          <div class="metric-grid" data-website-analytics-metrics></div>
+          <div class="dashboard-grid">
+            <section class="portal-panel nested-panel">
+              <h3>Lead Sources</h3>
+              <div data-website-lead-sources></div>
+            </section>
+            <section class="portal-panel nested-panel">
+              <h3>Top Pages</h3>
+              <div data-website-top-pages></div>
+            </section>
+            <section class="portal-panel nested-panel">
+              <h3>Visitor Geography</h3>
+              <div data-website-geography></div>
+            </section>
+            <section class="portal-panel nested-panel">
+              <h3>Daily Activity</h3>
+              <div data-website-daily></div>
+            </section>
+          </div>
+        </section>
       </section>
 
       <section class="portal-view" data-section="admin" data-admin-only hidden>

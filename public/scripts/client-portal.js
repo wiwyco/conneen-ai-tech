@@ -40,6 +40,7 @@ const state = {
     projects: [],
     milestones: [],
   },
+  websiteAnalytics: null,
   access: {
     groups: [],
     memberships: [],
@@ -138,6 +139,7 @@ const pageSubtitles = {
   work: "A project board for tasks and user stories, organized by current status.",
   support: "Schedule meetings and review the delivery timeline for upcoming work.",
   ai: "Ask Scout for summaries, next actions, scope drafts, and project context.",
+  dashboards: "Admin-only website usage dashboards for traffic, Scout conversations, leads, and visitor geography.",
   admin: "Internal controls for clients, users, reminders, and Scout archives.",
 };
 
@@ -417,9 +419,10 @@ function showSection(name, options = {}) {
     button.classList.toggle("active", active);
     button.setAttribute("aria-current", active ? "page" : "false");
   });
-  qs("[data-active-title]").textContent = name === "ai" ? "Scout AI" : name.charAt(0).toUpperCase() + name.slice(1);
+  qs("[data-active-title]").textContent = name === "ai" ? "Scout AI" : name === "dashboards" ? "Dashboards" : name.charAt(0).toUpperCase() + name.slice(1);
   const subtitle = qs("[data-active-subtitle]");
   if (subtitle) subtitle.textContent = pageSubtitles[name] || "";
+  if (name === "dashboards") loadWebsiteAnalytics().catch((error) => setStatus(error.message || "Could not load website analytics.", true));
   qs(".portal-sidebar")?.classList.remove("open");
 }
 
@@ -2731,6 +2734,75 @@ async function loadAccess() {
   renderAccessControls();
 }
 
+function compactList(items, { label = "label", value = "count", empty = "No data yet." } = {}) {
+  return items?.length
+    ? `<div class="analytics-list">${items.map((item) => `
+      <article>
+        <strong>${escapeHtml(item[label] || "Unknown")}</strong>
+        <span>${escapeHtml(String(item[value] ?? 0))}</span>
+      </article>
+    `).join("")}</div>`
+    : `<p class="empty">${escapeHtml(empty)}</p>`;
+}
+
+function renderDailyActivity(rows = []) {
+  if (!rows.length) return `<p class="empty">No activity yet.</p>`;
+  const maxValue = Math.max(1, ...rows.map((row) => row.pageViews + row.chatMessages + row.leads));
+  return `<div class="daily-activity-table">
+    <div class="daily-activity-row daily-activity-header">
+      <span>Date</span>
+      <span>Views</span>
+      <span>Chat</span>
+      <span>Leads</span>
+      <span>Volume</span>
+    </div>
+    ${rows.slice(-14).map((row) => {
+      const total = row.pageViews + row.chatMessages + row.leads;
+      const width = Math.max(4, Math.round((total / maxValue) * 100));
+      return `
+        <div class="daily-activity-row">
+          <span>${escapeHtml(row.date)}</span>
+          <span>${escapeHtml(String(row.pageViews))}</span>
+          <span>${escapeHtml(String(row.chatMessages))}</span>
+          <span>${escapeHtml(String(row.leads))}</span>
+          <span><i style="width:${width}%"></i></span>
+        </div>
+      `;
+    }).join("")}
+  </div>`;
+}
+
+function renderWebsiteAnalytics() {
+  const data = state.websiteAnalytics;
+  if (!data) return;
+  const counts = data.counts || {};
+  qs("[data-website-analytics-metrics]").innerHTML = [
+    metric("Page views", counts.pageViews || 0),
+    metric("Unique visitors", counts.uniqueVisitors || 0),
+    metric("Scout sessions", counts.chatbotSessions || 0),
+    metric("Chat messages", counts.chatMessages || 0),
+    metric("Leads", counts.leads || 0),
+    metric("Chatbot leads", counts.chatbotLeads || 0),
+    metric("Website leads", counts.websiteLeads || 0),
+  ].join("");
+  qs("[data-website-lead-sources]").innerHTML = compactList(data.leadSources, { empty: "No leads in this window." });
+  qs("[data-website-top-pages]").innerHTML = compactList(data.topPages, { empty: "No page views recorded yet." });
+  const geography = [
+    ...(data.countries || []).map((item) => ({ ...item, label: `Country: ${item.label}` })),
+    ...(data.regions || []).slice(0, 6).map((item) => ({ ...item, label: `Region: ${item.label}` })),
+    ...(data.cities || []).slice(0, 6).map((item) => ({ ...item, label: `City: ${item.label}` })),
+  ];
+  qs("[data-website-geography]").innerHTML = compactList(geography, { empty: "No coarse location data available yet." });
+  qs("[data-website-daily]").innerHTML = renderDailyActivity(data.daily || []);
+}
+
+async function loadWebsiteAnalytics() {
+  if (!state.isAdmin) return;
+  const days = qs("[data-website-analytics-days]")?.value || "30";
+  state.websiteAnalytics = await api(`/api/portal/website-analytics?days=${encodeURIComponent(days)}`);
+  renderWebsiteAnalytics();
+}
+
 async function loadAdmin() {
   if (!state.isAdmin) return;
   const [admin] = await Promise.all([
@@ -3115,6 +3187,9 @@ qs("[data-project-detail-modal]")?.addEventListener("click", (event) => {
 });
 qs("[data-meeting-form]")?.addEventListener("submit", handleMeetingCreate);
 qs("[data-meeting-date]")?.addEventListener("change", renderMeetingSlots);
+qs("[data-website-analytics-days]")?.addEventListener("change", () => {
+  loadWebsiteAnalytics().catch((error) => setStatus(error.message || "Could not load website analytics.", true));
+});
 qs("[data-task-project-select]")?.addEventListener("change", () => {
   const projectId = qs("[data-task-project-select]")?.value || "";
   const stories = state.workRecords.requirements.filter((story) => !projectId || story.project_id === projectId);

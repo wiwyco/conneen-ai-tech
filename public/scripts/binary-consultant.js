@@ -38,6 +38,8 @@ const page = document.getElementById("page");
 
   const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   const LEAD_PANE_MARKER = "[[OPEN_LEAD_PANE]]";
+  const VISITOR_STORAGE_KEY = "conneen_analytics_visitor_id";
+  const SESSION_STORAGE_KEY = "conneen_analytics_session_id";
   const turnstileSiteKey = chatShell.dataset.turnstileSiteKey || siteShell.dataset.turnstileSiteKey || "";
   let visitorFirstName = "";
 
@@ -103,6 +105,45 @@ const page = document.getElementById("page");
     });
 
     return turnstileState.loadPromise;
+  }
+
+  function analyticsId(storage, key) {
+    try {
+      let value = storage.getItem(key);
+      if (!value) {
+        value = crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+        storage.setItem(key, value);
+      }
+      return value;
+    } catch {
+      return "";
+    }
+  }
+
+  const analyticsVisitorId = analyticsId(window.localStorage, VISITOR_STORAGE_KEY);
+  const analyticsSessionId = analyticsId(window.sessionStorage, SESSION_STORAGE_KEY);
+
+  function trackWebsiteEvent(eventType, metadata = {}) {
+    const payload = {
+      eventType,
+      pagePath: window.location.pathname,
+      referrer: document.referrer,
+      visitorId: analyticsVisitorId,
+      sessionId: analyticsSessionId,
+      metadata,
+    };
+    const body = JSON.stringify(payload);
+    if (navigator.sendBeacon) {
+      const blob = new Blob([body], { type: "application/json" });
+      navigator.sendBeacon("/api/analytics/track", blob);
+      return;
+    }
+    fetch("/api/analytics/track", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body,
+      keepalive: true,
+    }).catch(() => {});
   }
 
   async function renderTurnstileWidgets() {
@@ -1124,6 +1165,7 @@ const page = document.getElementById("page");
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ messages: getMessagesForApi(), visitorFirstName }),
       });
+      trackWebsiteEvent("chat_message", { messageCount: getMessagesForApi().length });
 
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Request failed.");
@@ -1155,6 +1197,8 @@ const page = document.getElementById("page");
       company: String(formData.get("company") || ""),
       workflow: String(formData.get("workflow") || ""),
       pagePath: window.location.pathname,
+      visitorId: analyticsVisitorId,
+      sessionId: analyticsSessionId,
       messages: getMessagesForApi(),
     };
 
@@ -1309,6 +1353,8 @@ const page = document.getElementById("page");
         company: String(formData.get("company") || ""),
         workflow: String(formData.get("workflow") || ""),
         pagePath: window.location.pathname,
+        visitorId: analyticsVisitorId,
+        sessionId: analyticsSessionId,
       };
       const siteLeadSubmitButton = siteLeadForm.querySelector("[data-site-lead-submit]");
       const siteLeadStatus = siteLeadForm.querySelector("[data-site-lead-status]");
@@ -1389,6 +1435,7 @@ const page = document.getElementById("page");
   window.addEventListener("touchstart", handlePointer, { passive: true });
 
   resize();
+  trackWebsiteEvent("page_view");
 
   if (reducedMotion) {
     setTimeout(() => completeIntro(), 700);

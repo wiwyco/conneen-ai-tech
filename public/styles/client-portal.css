@@ -497,6 +497,98 @@ label {
   overflow-wrap: anywhere;
 }
 
+.usage-dashboard-panel {
+  display: grid;
+  gap: 18px;
+}
+
+.dashboard-heading {
+  display: flex;
+  justify-content: space-between;
+  gap: 18px;
+  align-items: end;
+}
+
+.dashboard-heading p {
+  margin: 4px 0 0;
+  color: var(--muted);
+}
+
+.dashboard-heading label {
+  width: min(220px, 100%);
+}
+
+.dashboard-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.nested-panel {
+  box-shadow: none;
+  background: #fff;
+}
+
+.nested-panel h3 {
+  margin: 0 0 12px;
+  font-size: 0.98rem;
+}
+
+.analytics-list {
+  display: grid;
+  gap: 8px;
+}
+
+.analytics-list article {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 10px 12px;
+}
+
+.analytics-list strong {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.analytics-list span {
+  color: var(--accent);
+  font-weight: 800;
+}
+
+.daily-activity-table {
+  display: grid;
+  gap: 6px;
+}
+
+.daily-activity-row {
+  display: grid;
+  grid-template-columns: 1.2fr 0.7fr 0.7fr 0.7fr 1.4fr;
+  gap: 10px;
+  align-items: center;
+  font-size: 0.88rem;
+}
+
+.daily-activity-header {
+  color: var(--muted);
+  font-size: 0.76rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.daily-activity-row i {
+  display: block;
+  height: 9px;
+  border-radius: 999px;
+  background: var(--accent);
+}
+
 .knowledge-library {
   display: grid;
   gap: 12px;
@@ -1831,9 +1923,23 @@ button[data-admin-only]:not([hidden]) {
   .task-form-grid,
   .meeting-scout-grid,
   .support-grid,
+  .dashboard-grid,
   .project-row,
   .knowledge-row {
     grid-template-columns: 1fr;
+  }
+
+  .dashboard-heading {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .daily-activity-row {
+    grid-template-columns: 1fr 0.5fr 0.5fr 0.5fr;
+  }
+
+  .daily-activity-row span:last-child {
+    display: none;
   }
 
   .portal-sidebar {

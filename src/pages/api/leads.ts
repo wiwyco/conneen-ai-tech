@@ -2,6 +2,7 @@ import type { APIRoute } from "astro";
 import { provisionPortalFromLead } from "../../lib/portal/provisioning";
 import { verifyLeadCaptcha } from "../../lib/portal/captcha";
 import { enforceRateLimit, RATE_LIMITS } from "../../lib/portal/rate-limit";
+import { recordWebsiteAnalyticsEvent } from "../../lib/portal/websiteAnalytics";
 
 export const prerender = false;
 
@@ -19,6 +20,8 @@ type LeadRequest = {
   source?: unknown;
   messages?: unknown;
   pagePath?: unknown;
+  visitorId?: unknown;
+  sessionId?: unknown;
   captchaToken?: unknown;
   turnstileToken?: unknown;
   "cf-turnstile-response"?: unknown;
@@ -346,6 +349,19 @@ export const POST: APIRoute = async ({ request }) => {
     }
 
     const emailSent = await sendLeadEmail({ lead: lead || leadPayload, transcript, portalProvision });
+    await recordWebsiteAnalyticsEvent(request, {
+      eventType: "lead_submission",
+      source: leadPayload.source,
+      pagePath: leadPayload.page_path,
+      visitorId: body?.visitorId,
+      sessionId: body?.sessionId,
+      metadata: {
+        leadId: lead?.id || null,
+        workflowType,
+        emailSent,
+        portalProvisioned: Boolean(portalProvision),
+      },
+    });
 
     if (!lead && !emailSent) {
       return new Response(JSON.stringify({ error: PUBLIC_LEAD_ERROR, leadStorageError }), {
