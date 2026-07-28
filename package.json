@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "astro dev",
-    "prebuild": "npm run check:supabase-freeze && npm run test:portal-integrations",
+    "prebuild": "node scripts/prebuild-checks.mjs",
     "build": "astro build",
     "preview": "astro preview",
     "astro": "astro",

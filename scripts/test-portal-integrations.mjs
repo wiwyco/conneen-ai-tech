@@ -7,7 +7,7 @@ import { pathToFileURL } from "node:url";
 import ts from "typescript";
 
 const root = process.cwd();
-const buildRoot = path.join(root, ".test-build");
+const buildRoot = path.join(root, ".test-build", String(process.pid));
 const srcRoot = path.join(root, "src");
 
 process.env.SUPABASE_URL = "https://supabase.test";
