@@ -14,6 +14,7 @@
     "test:zoom-oauth": "node scripts/test-zoom-oauth.mjs",
     "test:zoom-scout-voice": "node scripts/test-zoom-scout-voice-assistant.mjs",
     "scout:voice-options": "node scripts/generate-scout-voice-options.mjs",
+    "validate:prod-env": "node scripts/validate-production-env.mjs",
     "scout:rtms": "node scripts/scout-rtms-listener.mjs"
   },
   "dependencies": {
